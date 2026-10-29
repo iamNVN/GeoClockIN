@@ -350,7 +350,9 @@ function WeekCardSkeleton() {
         {Array.from({ length: 7 }, (_, i) => (
           <span key={i} className="week__day">
             <Skeleton width={10} height={10} />
-            <Skeleton width={36} circle />
+            <span className="week__dot week__dot--skeleton">
+              <Skeleton width="100%" height="100%" radius={13} />
+            </span>
           </span>
         ))}
       </div>

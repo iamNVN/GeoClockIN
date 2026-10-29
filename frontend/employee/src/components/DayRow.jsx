@@ -4,16 +4,21 @@ import { StatusBadge } from './StatusBadge.jsx';
 
 function subtitle(day) {
   const { record } = day;
-  if (!record) return 'No attendance recorded';
+  if (!record) return null;
   if (record.checkOutAt) return `${formatDuration(record.workedMinutes)} worked`;
   if (day.missingCheckOut) return 'No check-out recorded';
   return 'Shift in progress';
 }
 
-/** One attendance day: date tile, times, status. */
+/**
+ * One attendance day: date tile, times on the first line, status and hours on
+ * the second. Stacking the status under the times keeps rows readable on
+ * narrow (360 px) phones.
+ */
 export function DayRow({ day, onOpen, style }) {
   const { day: dayNumber, weekday } = dayParts(day.date);
   const { record } = day;
+  const sub = subtitle(day);
 
   return (
     <button
@@ -28,20 +33,20 @@ export function DayRow({ day, onOpen, style }) {
         <span className="day-row__weekday">{weekday}</span>
       </span>
       <span className="day-row__body">
-        <span className="day-row__times">
-          {record ? (
-            <>
-              {formatTime(record.checkInAt)}
-              <ArrowRight aria-hidden="true" />
-              {formatTime(record.checkOutAt)}
-            </>
-          ) : (
-            'Absent'
-          )}
+        {record ? (
+          <span className="day-row__times">
+            {formatTime(record.checkInAt)}
+            <ArrowRight aria-hidden="true" />
+            {formatTime(record.checkOutAt)}
+          </span>
+        ) : (
+          <span className="day-row__times day-row__times--empty">No attendance recorded</span>
+        )}
+        <span className="day-row__meta">
+          <StatusBadge status={day.status} />
+          {sub && <span className={`day-row__sub${day.missingCheckOut ? ' is-warn' : ''}`}>{sub}</span>}
         </span>
-        <span className={`day-row__sub${day.missingCheckOut ? ' is-warn' : ''}`}>{subtitle(day)}</span>
       </span>
-      <StatusBadge status={day.status} />
       <ChevronRight className="day-row__chevron" aria-hidden="true" />
     </button>
   );
