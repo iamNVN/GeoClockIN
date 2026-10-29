@@ -11,10 +11,171 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preload" as="image" href="/brand/logo.webp" fetchpriority="high" />
     <title>GeoClockIN</title>
+    <!--
+      Splash styles live here (not in the bundle) so the splash paints on the
+      first byte, before any JavaScript loads. SplashScreen.jsx reuses them.
+    -->
+    <style>
+      .splash {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+        padding: calc(32px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom));
+        overflow: hidden;
+        background: #fff;
+        color: #0f172a;
+        font-family: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+        transition:
+          opacity 0.4s ease,
+          visibility 0.4s;
+      }
+      .splash.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .splash__glow {
+        position: absolute;
+        top: 8%;
+        left: 50%;
+        width: 440px;
+        height: 440px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgb(47 207 142 / 0.22), transparent 65%);
+        transform: translateX(-50%);
+        animation: splash-breathe 3.2s ease-in-out infinite;
+        pointer-events: none;
+      }
+      .splash__brand,
+      .splash__footer {
+        position: relative;
+        display: grid;
+        justify-items: center;
+        gap: 12px;
+        margin: 0;
+      }
+      .splash__logo {
+        display: block;
+        width: 232px;
+        max-width: 70vw;
+        height: auto;
+        opacity: 0;
+      }
+      .splash__logo.is-loaded {
+        opacity: 1;
+        animation: splash-logo 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+      }
+      .splash__motto {
+        margin: 0;
+        color: #64748b;
+        font-size: 15px;
+        letter-spacing: 0.02em;
+        animation: splash-rise 0.6s 0.3s ease-out backwards;
+      }
+      .splash__scene {
+        position: relative;
+        display: block;
+        width: 100%;
+        max-width: 290px;
+        height: auto;
+        animation: splash-rise 0.7s 0.4s ease-out backwards;
+      }
+      .splash__footer {
+        gap: 18px;
+        animation: splash-rise 0.6s 0.55s ease-out backwards;
+      }
+      .splash__tagline {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 650;
+      }
+      .splash__progress {
+        width: 140px;
+        height: 5px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e4f6ee;
+      }
+      .splash__progress span {
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #25c486, #0f9d69);
+        animation: splash-loading 1.1s ease-in-out infinite;
+      }
+      @keyframes splash-breathe {
+        50% {
+          opacity: 0.55;
+          transform: translateX(-50%) scale(1.12);
+        }
+      }
+      @keyframes splash-logo {
+        from {
+          opacity: 0;
+          transform: scale(0.7) translateY(14px);
+        }
+      }
+      @keyframes splash-rise {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+      }
+      @keyframes splash-loading {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(260%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .splash *,
+        .splash {
+          animation: none !important;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+
+    <div id="splash" class="splash" role="status" aria-label="Loading GeoClockIN">
+      <span class="splash__glow" aria-hidden="true"></span>
+      <div class="splash__brand">
+        <img
+          class="splash__logo"
+          src="/brand/logo.webp"
+          width="232"
+          height="183"
+          alt="GeoClockIN"
+          fetchpriority="high"
+          onload="this.classList.add('is-loaded')"
+        />
+        <p class="splash__motto">Right Place. Right Time.</p>
+      </div>
+      <img class="splash__scene" src="/brand/office-scene.svg" width="290" height="193" alt="" />
+      <div class="splash__footer">
+        <p class="splash__tagline">Employee Attendance Made Simple</p>
+        <span class="splash__progress"><span></span></span>
+      </div>
+    </div>
+    <script>
+      window.__splashShownAt = performance.now();
+      // The logo may already be decoded from cache before onload is attached.
+      var logo = document.querySelector('.splash__logo');
+      if (logo.complete) logo.classList.add('is-loaded');
+    </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

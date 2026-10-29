@@ -1,8 +1,10 @@
 import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { OfficeScene } from '../components/Illustrations.jsx';
-import { BrandLogo } from '../components/Logo.jsx';
 
+/**
+ * Same look as the launch splash in index.html (and its styles). Shown when the
+ * session check fails, and while retrying it.
+ */
 export default function SplashScreen() {
   const { status, error, retry } = useAuth();
 
@@ -11,13 +13,17 @@ export default function SplashScreen() {
       <span className="splash__glow" aria-hidden="true" />
       <div className="splash__brand">
         <h1>
-          <BrandLogo width={232} className="splash__logo" />
+          <img
+            className="splash__logo is-loaded"
+            src="/brand/logo.webp"
+            width="232"
+            height="183"
+            alt="GeoClockIN"
+          />
         </h1>
         <p className="splash__motto">Right Place. Right Time.</p>
       </div>
-
-      <OfficeScene className="splash__scene" />
-
+      <img className="splash__scene" src="/brand/office-scene.svg" width="290" height="193" alt="" />
       <div className="splash__footer">
         <p className="splash__tagline">Employee Attendance Made Simple</p>
         {status === 'error' ? (

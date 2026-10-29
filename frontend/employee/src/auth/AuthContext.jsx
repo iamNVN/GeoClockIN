@@ -1,12 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, onSessionExpired } from '../lib/api.js';
 import { setOfficeTimeZone } from '../lib/format.js';
+import { splashMinimumElapsed } from '../lib/splash.js';
 
 const AuthContext = createContext(null);
-
-// Keeps the splash screen up long enough to read rather than flash.
-const MIN_SPLASH_MS = 900;
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * status: loading | authenticated | unauthenticated | error
@@ -22,13 +19,12 @@ export function AuthProvider({ children }) {
 
   const restore = useCallback(async () => {
     setState({ status: 'loading' });
-    const minimumDelay = delay(MIN_SPLASH_MS);
     try {
       const session = await api('/auth/me');
-      await minimumDelay;
+      await splashMinimumElapsed();
       applySession(session);
     } catch (error) {
-      await minimumDelay;
+      await splashMinimumElapsed();
       setState(error.status === 401 ? { status: 'unauthenticated' } : { status: 'error', error });
     }
   }, [applySession]);

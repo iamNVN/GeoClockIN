@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
 import { useAuth } from './auth/AuthContext.jsx';
 import { BottomNav } from './components/BottomNav.jsx';
+import { hideSplash } from './lib/splash.js';
 import ClockPage from './pages/ClockPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import HomePage from './pages/HomePage.jsx';
@@ -31,6 +33,11 @@ function TabLayout() {
 
 export default function App() {
   const { status } = useAuth();
+
+  // The launch splash (index.html) covers the app until the session check is done.
+  useEffect(() => {
+    if (status !== 'loading') hideSplash();
+  }, [status]);
 
   return (
     <div className="app">
