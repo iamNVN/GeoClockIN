@@ -15,6 +15,7 @@ import {
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { Avatar } from '../components/Avatar.jsx';
+import { PageHeader } from '../components/PageHeader.jsx';
 import { formatShortDate, formatTimeOfDay, formatWorkdays } from '../lib/format.js';
 import { stagger } from '../lib/motion.js';
 
@@ -36,10 +37,12 @@ export default function ProfilePage() {
 
   return (
     <main className="page page--profile">
+      <PageHeader title="Profile" />
+
       <section className="profile-hero reveal">
         <Avatar name={employee.name} size="lg" />
         <div className="profile-hero__text">
-          <h1 className="profile-hero__name">{employee.name}</h1>
+          <h2 className="profile-hero__name">{employee.name}</h2>
           {employee.designation && <p className="profile-hero__role">{employee.designation}</p>}
           <p className="profile-hero__chips">
             <span className="hero__chip">{employee.id}</span>
@@ -76,8 +79,8 @@ export default function ProfilePage() {
       <p className="privacy-note reveal" style={stagger(3)}>
         <ShieldCheck aria-hidden="true" />
         <span>
-          Your location is only read when you check it or clock in/out. GeoClockIN stores your distance from the
-          office — never your exact coordinates.
+          GeoClockIN stores only your distance from the
+          office, never your exact coordinates.
         </span>
       </p>
 
