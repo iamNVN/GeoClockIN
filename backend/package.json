@@ -1,0 +1,22 @@
+{
+  "name": "@geoclockin/backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GeoClockIN API — authentication, geofence verification and attendance rules.",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env src/server.js",
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
+    "hash-password": "node scripts/hash-password.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1"
+  }
+}

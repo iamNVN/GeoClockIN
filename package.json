@@ -1,0 +1,26 @@
+{
+  "name": "geoclockin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Location-verified employee attendance.",
+  "type": "module",
+  "workspaces": [
+    "backend",
+    "frontend/employee"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c green,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev -w backend",
+    "dev:web": "npm run dev -w frontend/employee",
+    "build": "npm run build -w frontend/employee",
+    "test": "npm test -w backend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "hash-password": "npm run hash-password -w backend --"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
