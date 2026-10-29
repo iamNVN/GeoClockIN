@@ -16,8 +16,8 @@ export default function SplashScreen() {
           <img
             className="splash__logo is-loaded"
             src="/brand/logo.webp"
-            width="232"
-            height="183"
+            width="196"
+            height="155"
             alt="GeoClockIN"
           />
         </h1>

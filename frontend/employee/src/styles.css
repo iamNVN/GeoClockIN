@@ -32,7 +32,7 @@
 
   --radius-sm: 10px;
   --radius: 14px;
-  --radius-lg: 20px;
+  --radius-lg: 18px;
   --radius-xl: 26px;
   --radius-pill: 999px;
 
@@ -45,8 +45,8 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --gutter: 16px;
-  --nav-height: 64px;
-  --nav-space: calc(var(--nav-height) + 34px + env(safe-area-inset-bottom));
+  --nav-height: 58px;
+  --nav-space: calc(var(--nav-height) + 30px + env(safe-area-inset-bottom));
   --font: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   color-scheme: light;
@@ -70,7 +70,7 @@ html {
 body {
   margin: 0;
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.45;
   color: var(--ink);
   background: var(--backdrop);
@@ -254,10 +254,10 @@ svg {
 .page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: calc(12px + env(safe-area-inset-top)) var(--gutter) var(--nav-space);
+  padding: calc(10px + env(safe-area-inset-top)) var(--gutter) var(--nav-space);
 }
 
 .page--no-nav {
@@ -290,13 +290,13 @@ svg {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 48px;
+  gap: 8px;
+  min-height: 44px;
   margin: 0;
-  padding: 0 20px;
+  padding: 0 18px;
   border: 1px solid transparent;
-  border-radius: var(--radius);
-  font-size: 16px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 650;
   line-height: 1.2;
   text-decoration: none;
@@ -308,8 +308,8 @@ svg {
 }
 
 .btn svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .btn:active:not(:disabled) {
@@ -379,27 +379,27 @@ svg {
 }
 
 .btn--lg {
-  min-height: 54px;
-  border-radius: 16px;
-  font-size: 16.5px;
+  min-height: 48px;
+  border-radius: 14px;
+  font-size: 15px;
 }
 
 .btn--xl {
-  min-height: 60px;
-  border-radius: 18px;
-  font-size: 17px;
+  min-height: 52px;
+  border-radius: 15px;
+  font-size: 16px;
 }
 
 .btn--xl svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .btn--sm {
-  min-height: 38px;
+  min-height: 36px;
   padding: 0 14px;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .btn--sm svg {
@@ -470,10 +470,10 @@ svg {
 .icon-button {
   display: inline-grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 11px;
   background: transparent;
   color: var(--ink);
   transition:
@@ -495,8 +495,8 @@ svg {
 }
 
 .icon-button svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .link-button {
@@ -504,7 +504,7 @@ svg {
   border: 0;
   background: none;
   color: var(--brand);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -518,7 +518,7 @@ svg {
 }
 
 .field__label {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink-2);
 }
@@ -527,10 +527,10 @@ svg {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 52px;
-  padding: 0 14px;
+  height: 46px;
+  padding: 0 12px;
   border: 1.5px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 12px;
   background: #f8fafb;
   transition:
     border-color 0.2s,
@@ -550,8 +550,8 @@ svg {
 }
 
 .input > svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: var(--subtle);
   transition: color 0.2s;
 }
@@ -588,22 +588,22 @@ svg {
 }
 
 .input__toggle svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .checkbox {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ink-2);
   cursor: pointer;
 }
 
 .checkbox input {
-  width: 19px;
-  height: 19px;
+  width: 17px;
+  height: 17px;
   margin: 0;
   accent-color: var(--brand);
 }
@@ -612,16 +612,16 @@ svg {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: var(--radius);
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.45;
   text-align: left;
 }
 
 .notice svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   margin-top: 1px;
 }
 
@@ -643,10 +643,10 @@ svg {
 .badge {
   display: inline-flex;
   align-items: center;
-  height: 24px;
-  padding: 0 10px;
+  height: 22px;
+  padding: 0 9px;
   border-radius: var(--radius-pill);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -703,15 +703,15 @@ svg {
 }
 
 .avatar--md {
-  width: 46px;
-  height: 46px;
-  font-size: 16px;
+  width: 42px;
+  height: 42px;
+  font-size: 15px;
 }
 
 .avatar--lg {
-  width: 72px;
-  height: 72px;
-  font-size: 25px;
+  width: 60px;
+  height: 60px;
+  font-size: 21px;
 }
 
 .card {
@@ -727,23 +727,23 @@ svg {
   align-items: center;
   justify-content: space-between;
   gap: 8px 10px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .card-head h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 650;
 }
 
 .card-head__meta {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 
 .card-head__link {
   color: var(--brand);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   text-decoration: none;
 }
@@ -789,23 +789,23 @@ svg {
 .empty-state__icon {
   display: grid;
   place-items: center;
-  width: 68px;
-  height: 68px;
+  width: 56px;
+  height: 56px;
   margin-bottom: 8px;
-  border-radius: 22px;
+  border-radius: 18px;
   background: var(--brand-soft);
   color: var(--brand);
   animation: bob 3s ease-in-out infinite;
 }
 
 .empty-state__icon svg {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
 }
 
 .empty-state__title {
   color: var(--ink);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -815,9 +815,9 @@ svg {
 
 .page-header {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 36px 1fr 36px;
   align-items: center;
-  min-height: 44px;
+  min-height: 40px;
 }
 
 .page-header .icon-button {
@@ -827,7 +827,7 @@ svg {
 }
 
 .page-header__title {
-  font-size: 17.5px;
+  font-size: 16.5px;
   font-weight: 700;
   text-align: center;
   letter-spacing: -0.01em;
@@ -842,9 +842,9 @@ svg {
   grid-template-columns: repeat(3, 1fr);
   width: min(456px, calc(100% - 24px));
   height: var(--nav-height);
-  padding: 6px;
+  padding: 5px;
   border: 1px solid rgb(15 23 42 / 0.06);
-  border-radius: 22px;
+  border-radius: 20px;
   background: rgb(255 255 255 / 0.92);
   backdrop-filter: blur(14px) saturate(1.4);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
@@ -862,11 +862,11 @@ svg {
 
 .bottom-nav__indicator {
   position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 6px;
-  width: calc((100% - 12px) / 3);
-  border-radius: 16px;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc((100% - 10px) / 3);
+  border-radius: 15px;
   background: var(--brand-soft);
   transform: translateX(calc(var(--index) * 100%));
   transition: transform 0.45s var(--ease-spring);
@@ -878,17 +878,17 @@ svg {
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 3px;
+  gap: 2px;
   color: var(--subtle);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   text-decoration: none;
   transition: color 0.25s;
 }
 
 .bottom-nav__item svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   transition: transform 0.35s var(--ease-spring);
 }
 
@@ -909,7 +909,7 @@ svg {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 22px;
+  gap: 18px;
   min-height: 100vh;
   min-height: 100dvh;
   padding: calc(28px + env(safe-area-inset-top)) var(--gutter) calc(24px + env(safe-area-inset-bottom));
@@ -979,18 +979,19 @@ svg {
 .login__brand p {
   color: var(--muted);
   font-weight: 500;
+  font-size: 13.5px;
 }
 
 .login__card {
   display: grid;
-  gap: 16px;
-  padding: 22px 18px;
-  border-radius: var(--radius-xl);
+  gap: 14px;
+  padding: 20px 16px;
+  border-radius: 22px;
   box-shadow: var(--shadow-lg);
 }
 
 .login__title {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 750;
   letter-spacing: -0.01em;
 }
@@ -998,7 +999,7 @@ svg {
 .login__subtitle {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .login__row {
@@ -1014,7 +1015,7 @@ svg {
   justify-content: center;
   gap: 8px;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -1033,25 +1034,25 @@ svg {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 .home-header__hello {
   color: var(--muted);
-  font-size: 17px;
+  font-size: 14.5px;
 }
 
 .home-header__name {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 750;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 .home-header__meta {
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .home-header__avatar {
@@ -1064,15 +1065,15 @@ svg {
 }
 
 .home-header .avatar {
-  width: 54px;
-  height: 54px;
-  font-size: 18px;
+  width: 46px;
+  height: 46px;
+  font-size: 16px;
 }
 
 .clock-card {
   display: grid;
-  gap: 6px;
-  padding: 18px;
+  gap: 4px;
+  padding: 16px;
   background:
     radial-gradient(circle at 100% 0%, var(--brand-softer), transparent 55%),
     var(--surface);
@@ -1080,7 +1081,7 @@ svg {
 
 .clock-card__date {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .clock-card__row {
@@ -1095,7 +1096,7 @@ svg {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 750;
   letter-spacing: -0.03em;
   line-height: 1.15;
@@ -1104,30 +1105,30 @@ svg {
 
 .clock-card__seconds {
   color: var(--subtle);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .clock-card__period {
   color: var(--ink-2);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .clock-card__hint {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .location-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
   border: 0;
   border-radius: var(--radius-pill);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
   transition:
@@ -1145,8 +1146,8 @@ svg {
 }
 
 .location-badge svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .location-badge--success {
@@ -1182,7 +1183,7 @@ svg {
 .week-card,
 .list-card,
 .calendar-card {
-  padding: 16px 18px;
+  padding: 14px 16px;
 }
 
 .list-card {
@@ -1195,18 +1196,18 @@ svg {
 
 .timeline__item {
   display: grid;
-  grid-template-columns: 26px 1fr auto;
+  grid-template-columns: 22px 1fr auto;
   align-items: center;
-  gap: 14px;
-  padding: 11px 0;
+  gap: 12px;
+  padding: 9px 0;
 }
 
 .timeline__dot {
   position: relative;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border: 2px solid var(--line-strong);
   border-radius: 50%;
   background: var(--surface);
@@ -1217,10 +1218,10 @@ svg {
 .timeline__item:first-child .timeline__dot::after {
   content: '';
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 3px);
   left: 50%;
   width: 2px;
-  height: 18px;
+  height: 14px;
   margin-left: -1px;
   border-radius: 2px;
   background: var(--line-strong);
@@ -1241,13 +1242,13 @@ svg {
 }
 
 .timeline__dot svg {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   stroke-width: 3;
 }
 
 .timeline__label {
-  font-size: 15.5px;
+  font-size: 14.5px;
   font-weight: 550;
 }
 
@@ -1258,6 +1259,7 @@ svg {
 .timeline__time {
   font-weight: 650;
   font-variant-numeric: tabular-nums;
+  font-size: 14px;
 }
 
 .timeline__item:not(.is-done) .timeline__time {
@@ -1266,8 +1268,8 @@ svg {
 }
 
 .shift {
-  margin-top: 8px;
-  padding-top: 14px;
+  margin-top: 6px;
+  padding-top: 12px;
   border-top: 1px dashed var(--line-strong);
 }
 
@@ -1303,9 +1305,9 @@ svg {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 8px;
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1318,13 +1320,13 @@ svg {
 .quick-links {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .quick-link {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
   color: inherit;
   text-decoration: none;
   transition:
@@ -1343,23 +1345,23 @@ svg {
 .quick-link__icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   background: var(--brand-soft);
   color: var(--brand);
 }
 
 .quick-link__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .quick-link__label {
   display: grid;
   gap: 1px;
   color: var(--ink);
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 650;
   line-height: 1.35;
 }
@@ -1369,7 +1371,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 
@@ -1396,14 +1398,14 @@ svg {
 .week__day {
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: 6px;
   animation: pop-in 0.45s var(--ease-spring) backwards;
   animation-delay: calc(400ms + var(--i, 0) * 45ms);
 }
 
 .week__label {
   color: var(--subtle);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -1411,12 +1413,12 @@ svg {
   display: grid;
   place-items: center;
   width: 100%;
-  max-width: 38px;
+  max-width: 34px;
   aspect-ratio: 1;
-  border-radius: 13px;
+  border-radius: 11px;
   background: var(--gray-soft);
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -1524,11 +1526,11 @@ svg {
 
 .day-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 14px;
+  grid-template-columns: 40px minmax(0, 1fr) 14px;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 12px 0;
+  padding: 10px 0;
   border: 0;
   border-top: 1px solid var(--line);
   background: none;
@@ -1556,9 +1558,9 @@ svg {
   display: grid;
   place-items: center;
   align-content: center;
-  width: 44px;
-  height: 48px;
-  border-radius: 14px;
+  width: 40px;
+  height: 44px;
+  border-radius: 12px;
   background: var(--brand-soft);
   color: var(--brand-strong);
   line-height: 1.05;
@@ -1575,12 +1577,12 @@ svg {
 }
 
 .day-row__num {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 750;
 }
 
 .day-row__weekday {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -1598,7 +1600,7 @@ svg {
   flex-wrap: wrap;
   align-items: center;
   gap: 2px 6px;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -1629,7 +1631,7 @@ svg {
 
 .day-row__sub {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .day-row__sub.is-warn {
@@ -1648,7 +1650,7 @@ svg {
 
 .day-groups {
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .day-group__label {
@@ -1656,7 +1658,7 @@ svg {
   justify-content: space-between;
   margin: 0 4px 8px;
   color: var(--ink-2);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 
@@ -1671,12 +1673,12 @@ svg {
 
 .month-switcher {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 36px 1fr 36px;
   align-items: center;
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
@@ -1687,9 +1689,9 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 40px;
+  height: 36px;
   border-radius: 12px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 650;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -1704,8 +1706,8 @@ svg {
 }
 
 .month-switcher__icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   color: var(--brand);
 }
 
@@ -1736,7 +1738,7 @@ svg {
   grid-template-columns: repeat(var(--count), 1fr);
   padding: 4px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
@@ -1747,7 +1749,7 @@ svg {
   bottom: 4px;
   left: 4px;
   width: calc((100% - 8px) / var(--count));
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(180deg, #14ab73, var(--brand));
   box-shadow: 0 6px 14px -6px rgb(15 157 105 / 0.7);
   transform: translateX(calc(var(--index) * 100%));
@@ -1761,12 +1763,12 @@ svg {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  height: 38px;
+  height: 34px;
   padding: 0 4px;
   border: 0;
   background: none;
   color: var(--ink-2);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   transition: color 0.25s;
 }
@@ -1813,8 +1815,8 @@ svg {
 }
 
 .clock-status__title {
-  margin-top: 14px;
-  font-size: 21px;
+  margin-top: 10px;
+  font-size: 18px;
   font-weight: 750;
   letter-spacing: -0.01em;
 }
@@ -1822,14 +1824,14 @@ svg {
 .clock-status__text {
   max-width: 36ch;
   color: var(--muted);
-  font-size: 14.5px;
+  font-size: 13.5px;
 }
 
 .radar {
   --tone: var(--brand);
   position: relative;
-  width: 228px;
-  height: 228px;
+  width: 196px;
+  height: 196px;
   color: var(--tone);
   transition: color 0.4s;
   animation: pop-in 0.55s var(--ease-spring) backwards;
@@ -1980,7 +1982,7 @@ svg {
 
 .info-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .info-row {
@@ -1988,8 +1990,8 @@ svg {
   --tone-soft: var(--brand-soft);
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 12px 14px;
 }
 
 .info-row--warning {
@@ -2011,9 +2013,9 @@ svg {
   display: grid;
   flex: none;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: var(--brand-soft);
   color: var(--brand);
 }
@@ -2027,8 +2029,8 @@ svg {
 }
 
 .info-row__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .info-row__body {
@@ -2046,18 +2048,18 @@ svg {
 }
 
 .info-row__title {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 650;
 }
 
 .info-row__text {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .info-row__value {
   color: var(--tone);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
@@ -2161,8 +2163,8 @@ svg {
 }
 
 .clock-result__title {
-  margin-top: 12px;
-  font-size: 22px;
+  margin-top: 10px;
+  font-size: 19px;
   font-weight: 750;
   letter-spacing: -0.01em;
 }
@@ -2170,6 +2172,7 @@ svg {
 .clock-result__date {
   margin-top: -6px;
   color: var(--muted);
+  font-size: 13px;
 }
 
 .clock-result__text {
@@ -2187,9 +2190,9 @@ svg {
 
 .success-mark {
   position: relative;
-  width: 108px;
-  height: 108px;
-  margin-top: 18px;
+  width: 88px;
+  height: 88px;
+  margin-top: 14px;
 }
 
 .success-mark::before {
@@ -2287,7 +2290,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 13px 0;
+  padding: 11px 0;
   border-top: 1px dashed var(--line-strong);
 }
 
@@ -2297,7 +2300,7 @@ svg {
 
 .receipt dt {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .receipt dd {
@@ -2305,7 +2308,7 @@ svg {
 }
 
 .receipt__time {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
@@ -2371,7 +2374,7 @@ svg {
 }
 
 .sheet__header h2 {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -2420,9 +2423,9 @@ svg {
 .detail-timeline__icon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: var(--gray-soft);
   color: var(--subtle);
 }
@@ -2440,7 +2443,7 @@ svg {
 
 .detail-timeline__label {
   display: grid;
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -2462,12 +2465,12 @@ svg {
 .summary-hero {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 18px;
+  gap: 16px;
+  padding: 16px;
 }
 
 .summary-hero__rate {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -2490,7 +2493,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13.5px;
 }
 
 .legend__label {
@@ -2499,7 +2502,7 @@ svg {
 }
 
 .legend strong {
-  font-size: 16px;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2528,7 +2531,7 @@ svg {
 .calendar {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: 5px;
 }
 
 .calendar__head {
@@ -2543,10 +2546,10 @@ svg {
   display: grid;
   place-items: center;
   aspect-ratio: 1;
-  border-radius: 11px;
+  border-radius: 9px;
   background: var(--gray-soft);
   color: var(--subtle);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   animation: pop-in 0.4s var(--ease-spring) backwards;
@@ -2581,40 +2584,40 @@ svg {
 .tile-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .tile {
   display: grid;
   gap: 3px;
-  padding: 14px;
+  padding: 12px;
 }
 
 .tile__icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 8px;
-  border-radius: 11px;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 6px;
+  border-radius: 10px;
   background: var(--brand-soft);
   color: var(--brand);
 }
 
 .tile__icon svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .tile__value {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
 
 .tile__label {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .tile--warn .tile__icon {
@@ -2630,11 +2633,12 @@ svg {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 14px;
   color: var(--ink-2);
   font-weight: 650;
   text-decoration: none;
   transition: border-color 0.2s;
+  font-size: 14px;
 }
 
 .link-row:hover {
@@ -2655,10 +2659,10 @@ svg {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 22px 18px;
+  gap: 14px;
+  padding: 18px 16px;
   overflow: hidden;
-  border-radius: var(--radius-xl);
+  border-radius: 22px;
   background: var(--grad-brand);
   color: #fff;
   box-shadow: var(--shadow-brand);
@@ -2692,27 +2696,27 @@ svg {
 }
 
 .profile-hero__name {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 750;
   letter-spacing: -0.01em;
 }
 
 .profile-hero__role {
   color: rgb(255 255 255 / 0.85);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .profile-hero__chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .list-card__title {
   margin-bottom: 4px;
   color: var(--subtle);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -2721,8 +2725,8 @@ svg {
 .info-line {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  gap: 11px;
+  padding: 9px 0;
   border-top: 1px solid var(--line);
 }
 
@@ -2734,16 +2738,16 @@ svg {
   display: grid;
   flex: none;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   background: var(--brand-soft);
   color: var(--brand);
 }
 
 .info-line__icon svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .info-line__text {
@@ -2753,11 +2757,11 @@ svg {
 
 .info-line__label {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .info-line__value {
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -2767,7 +2771,7 @@ svg {
   gap: 10px;
   padding: 0 4px;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 .privacy-note svg {
@@ -2788,28 +2792,28 @@ svg {
 
   .segmented__option {
     flex-direction: column;
-    gap: 2px;
-    height: 46px;
-    font-size: 12.5px;
+    gap: 1px;
+    height: 40px;
+    font-size: 12px;
   }
 
   .segmented__count {
     min-width: 18px;
-    height: 15px;
+    height: 14px;
     font-size: 10px;
   }
 
   .home-header__name {
-    font-size: 23px;
+    font-size: 20px;
   }
 
   .clock-card__time {
-    font-size: 32px;
+    font-size: 28px;
   }
 
   .radar {
-    width: 208px;
-    height: 208px;
+    width: 180px;
+    height: 180px;
   }
 
   .status-card,
@@ -2817,11 +2821,11 @@ svg {
   .list-card,
   .calendar-card,
   .summary-hero {
-    padding: 14px 16px;
+    padding: 12px 14px;
   }
 
   .summary-hero {
-    gap: 14px;
+    gap: 12px;
   }
 
   .card.day-list {

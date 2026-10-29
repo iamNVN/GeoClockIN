@@ -58,7 +58,7 @@ export default function LoginPage() {
       </div>
 
       <div className="login__brand reveal">
-        <BrandLogo width={188} />
+        <BrandLogo width={156} />
         <p>Employee Attendance</p>
       </div>
 

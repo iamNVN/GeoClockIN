@@ -44,7 +44,7 @@ function SummaryContent({ data }) {
   return (
     <>
       <section className="card summary-hero reveal" aria-label="Attendance rate">
-        <ProgressRing value={summary.attendanceRate ?? 0} size={128} stroke={12}>
+        <ProgressRing value={summary.attendanceRate ?? 0} size={112} stroke={11}>
           <strong className="summary-hero__rate">
             <CountUp value={summary.attendanceRate} suffix="%" />
           </strong>
@@ -159,7 +159,7 @@ function SummarySkeleton() {
   return (
     <>
       <section className="card summary-hero" aria-label="Loading summary">
-        <Skeleton width={128} circle />
+        <Skeleton width={112} circle />
         <div className="legend">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} height={16} width={i === 3 ? '80%' : '100%'} />

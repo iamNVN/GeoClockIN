@@ -260,7 +260,7 @@ function TodayStatusSkeleton() {
       <div className="timeline">
         {[0, 1].map((i) => (
           <div key={i} className="timeline__item">
-            <Skeleton width={26} circle />
+            <Skeleton width={22} circle />
             <Skeleton width="45%" height={15} />
             <Skeleton width={70} height={15} />
           </div>
@@ -274,7 +274,7 @@ function TodayStatusSkeleton() {
 }
 
 function PrimaryAction({ day }) {
-  if (!day) return <Skeleton height={60} radius={18} />;
+  if (!day) return <Skeleton height={52} radius={15} />;
   if (day.canCheckOut) {
     return (
       <Link to="/clock/out" className="btn btn--dark btn--block btn--xl btn--shine reveal" style={stagger(3)}>

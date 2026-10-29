@@ -13,7 +13,7 @@ export function Skeleton({ width = '100%', height = 14, radius, circle = false, 
 export function DayRowsSkeleton({ rows = 3 }) {
   return Array.from({ length: rows }, (_, i) => (
     <div key={i} className="day-row day-row--skeleton" aria-hidden="true">
-      <Skeleton width={44} height={48} radius={14} />
+      <Skeleton width={40} height={44} radius={12} />
       <span className="day-row__body">
         <Skeleton width="72%" height={14} />
         <span className="day-row__meta">
