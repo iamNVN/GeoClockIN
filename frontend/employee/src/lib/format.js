@@ -34,6 +34,31 @@ export function formatTime(value) {
   return formatter({ hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date(value));
 }
 
+/** { time: '09:46', seconds: '12', period: 'AM' } for a live clock. */
+export function clockParts(value) {
+  const p = parts({ hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }, value);
+  return { time: `${p.hour}:${p.minute}`, seconds: p.second, period: p.dayPeriod.toUpperCase() };
+}
+
+/** Minutes since midnight of an instant, in the office time zone. */
+export function minutesOfDay(value) {
+  const p = parts({ hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }, value);
+  return Number(p.hour) * 60 + Number(p.minute);
+}
+
+/** 'YYYY-MM-DD' of an instant, in the office time zone. */
+export function dateOf(value) {
+  const p = parts({ year: 'numeric', month: '2-digit', day: '2-digit' }, value);
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+export function greeting(value) {
+  const hour = Math.floor(minutesOfDay(value) / 60);
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 /** "Mon, 26 Aug 2026" for an instant, in the office time zone. */
 export function formatToday(value) {
   const p = parts({ weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }, value);
@@ -44,6 +69,25 @@ export function formatToday(value) {
 export function dayParts(date) {
   const p = parts({ weekday: 'short', day: 'numeric', month: 'short' }, calendarDate(date), 'UTC');
   return { day: p.day, month: p.month, weekday: p.weekday };
+}
+
+/** "26 – 30 Oct" or "28 Sep – 4 Oct" for a range of calendar dates. */
+export function formatDateRange(from, to) {
+  const a = dayParts(from);
+  const b = dayParts(to);
+  return a.month === b.month ? `${a.day} – ${b.day} ${b.month}` : `${a.day} ${a.month} – ${b.day} ${b.month}`;
+}
+
+/** Calendar date arithmetic on 'YYYY-MM-DD' strings. */
+export function addDays(date, days) {
+  const d = calendarDate(date);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The Monday of the week containing `date`. */
+export function startOfWeek(date) {
+  return addDays(date, -((calendarDate(date).getUTCDay() + 6) % 7));
 }
 
 /** "Monday, 26 August 2026" for a calendar date. */
@@ -113,6 +157,13 @@ export function formatDuration(minutes) {
 export function formatDistance(meters) {
   if (meters == null) return '—';
   if (meters < 1000) return `${Math.round(meters)} ${Math.round(meters) === 1 ? 'meter' : 'meters'}`;
+  return `${(meters / 1000).toFixed(meters < 10_000 ? 1 : 0)} km`;
+}
+
+/** 18 → "18 m", 1234 → "1.2 km". */
+export function formatDistanceShort(meters) {
+  if (meters == null) return '—';
+  if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(meters < 10_000 ? 1 : 0)} km`;
 }
 

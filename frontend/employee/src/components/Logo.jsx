@@ -1,34 +1,31 @@
-import { useId } from 'react';
+import logoUrl from '../assets/logo.webp';
+import logoMarkUrl from '../assets/logo-mark.webp';
 
-/** The GeoClockIN map-pin-with-clock mark. */
-export function LogoMark({ size = 64, className }) {
-  const gradientId = `logo${useId().replace(/[^\w-]/g, '')}`;
+/** Full logo: pin mark with the GeoClockIN wordmark. */
+export function BrandLogo({ width = 220, className = '' }) {
   return (
-    <svg className={className} width={size} height={size * (74 / 64)} viewBox="0 0 64 74" aria-hidden="true">
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#27bb7a" />
-          <stop offset="1" stopColor="#0a6a43" />
-        </linearGradient>
-      </defs>
-      <path d="M32 2C17.6 2 6 13.4 6 27.6 6 47 32 72 32 72s26-25 26-44.4C58 13.4 46.4 2 32 2z" fill={`url(#${gradientId})`} />
-      <circle cx="32" cy="27.5" r="16.5" fill="#fff" />
-      <path
-        d="M32 18.5v9.6l6.2 3.7"
-        fill="none"
-        stroke="#0f8a57"
-        strokeWidth="3.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <img
+      className={`brand-logo ${className}`}
+      src={logoUrl}
+      width={width}
+      height={Math.round(width * (887 / 1124))}
+      alt="GeoClockIN"
+      decoding="async"
+    />
   );
 }
 
-export function Wordmark({ className = '' }) {
+/** Pin mark only. Decorative: pair it with visible text. */
+export function BrandMark({ size = 40, className = '' }) {
   return (
-    <span className={`wordmark ${className}`}>
-      GeoClock<span className="wordmark__accent">IN</span>
-    </span>
+    <img
+      className={`brand-mark ${className}`}
+      src={logoMarkUrl}
+      width={Math.round(size * (574 / 692))}
+      height={size}
+      alt=""
+      aria-hidden="true"
+      decoding="async"
+    />
   );
 }

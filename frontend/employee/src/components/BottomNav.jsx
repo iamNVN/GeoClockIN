@@ -14,10 +14,13 @@ const ITEMS = [
 
 export function BottomNav() {
   const { pathname } = useLocation();
+  const activeIndex = ITEMS.findIndex((item) => item.isActive(pathname));
+
   return (
-    <nav className="bottom-nav" aria-label="Main">
-      {ITEMS.map(({ to, label, Icon, isActive }) => {
-        const active = isActive(pathname);
+    <nav className="bottom-nav" aria-label="Main" style={{ '--index': Math.max(activeIndex, 0) }}>
+      {activeIndex >= 0 && <span className="bottom-nav__indicator" aria-hidden="true" />}
+      {ITEMS.map(({ to, label, Icon }, index) => {
+        const active = index === activeIndex;
         return (
           <Link
             key={to}
@@ -25,7 +28,7 @@ export function BottomNav() {
             className={`bottom-nav__item${active ? ' is-active' : ''}`}
             aria-current={active ? 'page' : undefined}
           >
-            <Icon aria-hidden="true" strokeWidth={active ? 2.4 : 1.9} />
+            <Icon aria-hidden="true" strokeWidth={active ? 2.3 : 1.9} />
             <span>{label}</span>
           </Link>
         );

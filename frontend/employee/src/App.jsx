@@ -16,10 +16,14 @@ function RequireAuth() {
   return <Outlet />;
 }
 
+/** Tab screens share the bottom nav; each screen animates in when the route changes. */
 function TabLayout() {
+  const { pathname } = useLocation();
   return (
     <>
-      <Outlet />
+      <div key={pathname} className="route-enter">
+        <Outlet />
+      </div>
       <BottomNav />
     </>
   );

@@ -1,8 +1,9 @@
-import { ArrowRight, Eye, EyeOff, Info, LoaderCircle, Lock, Mail } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Info, LoaderCircle, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useLocation } from 'react-router';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { LogoMark, Wordmark } from '../components/Logo.jsx';
+import { BrandLogo } from '../components/Logo.jsx';
+import { stagger } from '../lib/motion.js';
 
 export default function LoginPage() {
   const { status, login, sessionExpired } = useAuth();
@@ -14,16 +15,25 @@ export default function LoginPage() {
   const [showForgotHelp, setShowForgotHelp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [shaking, setShaking] = useState(false);
 
   if (status === 'authenticated') {
     const from = location.state?.from;
     return <Navigate to={from ? `${from.pathname}${from.search}` : '/'} replace />;
   }
 
+  function fail(nextError) {
+    setError(nextError);
+    setShaking(true);
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     if (!identifier.trim() || !password) {
-      setError({ message: 'Enter your employee ID or email and your password.', field: !identifier.trim() ? 'identifier' : 'password' });
+      fail({
+        message: 'Enter your employee ID or email and your password.',
+        field: !identifier.trim() ? 'identifier' : 'password',
+      });
       return;
     }
     setSubmitting(true);
@@ -31,7 +41,7 @@ export default function LoginPage() {
     try {
       await login({ identifier: identifier.trim(), password, rememberMe });
     } catch (err) {
-      setError({ message: err.message });
+      fail({ message: err.message });
       setSubmitting(false);
     }
   }
@@ -40,22 +50,36 @@ export default function LoginPage() {
   const passwordInvalid = error && error.field !== 'identifier';
 
   return (
-    <main className="login">
-      <div className="login__brand">
-        <LogoMark size={76} />
-        <h1>
-          <Wordmark className="wordmark--lg" />
-        </h1>
+    <main className="login route-enter">
+      <div className="login__backdrop" aria-hidden="true">
+        <span className="blob blob--one" />
+        <span className="blob blob--two" />
+        <span className="blob blob--three" />
+      </div>
+
+      <div className="login__brand reveal">
+        <BrandLogo width={188} />
         <p>Employee Attendance</p>
       </div>
 
-      {sessionExpired && !error && (
-        <p className="notice notice--info" role="status">
-          <Info aria-hidden="true" /> Your session has expired. Please sign in again.
-        </p>
-      )}
+      <form
+        className={`card login__card reveal${shaking ? ' shake' : ''}`}
+        style={stagger(1)}
+        onSubmit={handleSubmit}
+        onAnimationEnd={(event) => event.animationName === 'shake' && setShaking(false)}
+        noValidate
+      >
+        <div>
+          <h1 className="login__title">Welcome back</h1>
+          <p className="login__subtitle">Sign in to clock in and track your attendance.</p>
+        </div>
 
-      <form className="login__form" onSubmit={handleSubmit} noValidate>
+        {sessionExpired && !error && (
+          <p className="notice notice--info" role="status">
+            <Info aria-hidden="true" /> Your session has expired. Please sign in again.
+          </p>
+        )}
+
         <div className="field">
           <label className="field__label" htmlFor="identifier">
             Employee ID or Email
@@ -71,7 +95,7 @@ export default function LoginPage() {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck="false"
-              placeholder="Enter your employee ID or email"
+              placeholder="e.g. EMP001 or name@company.com"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               aria-invalid={identifierInvalid || undefined}
@@ -126,29 +150,33 @@ export default function LoginPage() {
         </div>
 
         {showForgotHelp && (
-          <p id="forgot-help" className="notice notice--info">
+          <p id="forgot-help" className="notice notice--info pop-in">
             <Info aria-hidden="true" /> Passwords are reset by your administrator. Please contact HR or your manager.
           </p>
         )}
 
         {error && (
-          <p id="login-error" className="notice notice--error" role="alert">
+          <p id="login-error" className="notice notice--error pop-in" role="alert">
             {error.message}
           </p>
         )}
 
-        <button type="submit" className="btn btn--primary btn--block btn--lg" disabled={submitting}>
+        <button type="submit" className="btn btn--primary btn--block btn--lg btn--shine" disabled={submitting}>
           {submitting ? (
             <>
               <LoaderCircle className="spin" aria-hidden="true" /> Signing in…
             </>
           ) : (
             <>
-              Sign In <ArrowRight aria-hidden="true" />
+              Sign In <ArrowRight className="btn__arrow" aria-hidden="true" />
             </>
           )}
         </button>
       </form>
+
+      <p className="login__footer reveal" style={stagger(2)}>
+        <ShieldCheck aria-hidden="true" /> Attendance is verified against your office location
+      </p>
     </main>
   );
 }
