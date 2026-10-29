@@ -69,6 +69,11 @@ export function weekdayOf(date) {
   return toUtcDate(date).getUTCDay();
 }
 
+/** The Monday of the week containing `date`. */
+export function startOfWeek(date) {
+  return addDays(date, -((weekdayOf(date) + 6) % 7));
+}
+
 /** First and last date of a 'YYYY-MM' month. */
 export function monthBounds(month) {
   const [year, monthIndex] = month.split('-').map(Number);

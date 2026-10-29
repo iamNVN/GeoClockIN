@@ -3,9 +3,17 @@ import { requireAuth } from '../auth.js';
 import { attendanceStartDate, config } from '../config.js';
 import { query } from '../db.js';
 import { HttpError } from '../errors.js';
-import { buildMonth, isLateCheckIn, serializeRecord, summarizeMonth, todayState } from '../lib/attendance.js';
+import {
+  buildMonth,
+  buildRange,
+  buildWeek,
+  isLateCheckIn,
+  serializeRecord,
+  summarizeMonth,
+  todayState,
+} from '../lib/attendance.js';
 import { parseCoordinates, verifyLocation } from '../lib/geo.js';
-import { monthBounds, zonedClock } from '../lib/time.js';
+import { addDays, minDate, monthBounds, startOfWeek, zonedClock } from '../lib/time.js';
 
 const { schedule } = config;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -51,6 +59,31 @@ router.get('/today', async (req, res) => {
   const { instant, date } = now();
   const record = serializeRecord(await findRecord(req.employee.id, date));
   res.json({ serverTime: instant.toISOString(), ...todayState(date, record, schedule) });
+});
+
+// Everything the home screen shows, in one request: today's status, this
+// week, this month's summary and the most recent attendance days.
+router.get('/overview', async (req, res) => {
+  const { instant, date: today, secondsOfDay } = now();
+  const month = today.slice(0, 7);
+  const weekStart = startOfWeek(today);
+  const recentStart = addDays(today, -13);
+  const from = minDate(minDate(monthBounds(month).first, weekStart), recentStart);
+
+  const { rows } = await query(
+    'SELECT * FROM attendance WHERE employee_id = $1 AND work_date BETWEEN $2 AND $3',
+    [req.employee.id, from, addDays(weekStart, 6)],
+  );
+  const records = rows.map(serializeRecord);
+  const context = { records, today, secondsOfDay, startDate: attendanceStartDate(req.employee), schedule };
+
+  res.json({
+    serverTime: instant.toISOString(),
+    today: todayState(today, records.find((r) => r.date === today) ?? null, schedule),
+    week: buildWeek(context),
+    month: { month, summary: summarizeMonth(buildMonth({ month, ...context }), schedule.timezone) },
+    recent: buildRange({ from: recentStart, to: today, ...context }).slice(0, 3),
+  });
 });
 
 // Lets the app show "Location Verified" before the employee confirms.

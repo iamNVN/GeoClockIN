@@ -6,6 +6,7 @@ import {
   isValidTimeZone,
   monthBounds,
   parseTimeOfDay,
+  startOfWeek,
   weekdayOf,
   zonedClock,
 } from '../src/lib/time.js';
@@ -38,6 +39,12 @@ describe('date helpers', () => {
   it('finds weekdays', () => {
     assert.equal(weekdayOf('2026-10-29'), 4); // Thursday
     assert.equal(weekdayOf('2026-11-01'), 0); // Sunday
+  });
+
+  it('finds the Monday of a week', () => {
+    assert.equal(startOfWeek('2026-10-29'), '2026-10-26');
+    assert.equal(startOfWeek('2026-10-26'), '2026-10-26');
+    assert.equal(startOfWeek('2026-11-01'), '2026-10-26'); // Sunday belongs to the week before
   });
 
   it('computes month bounds including leap years', () => {

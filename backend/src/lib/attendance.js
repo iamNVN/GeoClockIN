@@ -1,5 +1,5 @@
 // Attendance business rules. Pure functions: no I/O, so they are easy to test.
-import { addDays, minDate, monthBounds, weekdayOf, zonedClock } from './time.js';
+import { addDays, minDate, monthBounds, startOfWeek, weekdayOf, zonedClock } from './time.js';
 
 export function isWorkday(date, schedule) {
   return schedule.workdays.includes(weekdayOf(date)) && !schedule.holidays.includes(date);
@@ -42,36 +42,52 @@ export function todayState(date, record, schedule) {
 }
 
 /**
- * Day-by-day attendance for one month, newest first.
- *
- * - A day with a check-in is `present` or `late`; `missingCheckOut` is set when a
- *   past day was never checked out.
- * - A workday without a check-in is `absent` once it has passed (today counts
- *   as passed after workEnd). Days before `startDate` are never absent.
- * - Non-workdays without attendance, and today before workEnd, are omitted.
+ * Attendance status of a single date:
+ * - `present` / `late`: checked in (on time / after the grace period).
+ * - `absent`: a workday on or after `startDate` with no check-in, once it has
+ *   passed (today counts as passed after workEnd).
+ * - `pending`: a workday still to come, or today before workEnd.
+ * - `off`: weekend, holiday, or before `startDate`.
  */
-export function buildMonth({ month, records, today, secondsOfDay, startDate, schedule }) {
+export function dayStatus(date, record, { today, secondsOfDay, startDate, schedule }) {
+  if (record) return record.isLate ? 'late' : 'present';
+  if (date < startDate || !isWorkday(date, schedule)) return 'off';
+  if (date > today || (date === today && secondsOfDay < schedule.workEndMinutes * 60)) return 'pending';
+  return 'absent';
+}
+
+/**
+ * Attended and absent days between `from` and `to` (capped at today), newest
+ * first. `missingCheckOut` is set when a past day was never checked out.
+ */
+export function buildRange({ from, to, records, ...context }) {
   const byDate = new Map(records.map((record) => [record.date, record]));
-  const { first, last } = monthBounds(month);
   const days = [];
 
-  for (let date = first; date <= minDate(last, today); date = addDays(date, 1)) {
-    const record = byDate.get(date);
-    if (record) {
-      days.push({
-        date,
-        status: record.isLate ? 'late' : 'present',
-        missingCheckOut: !record.checkOutAt && date < today,
-        record,
-      });
-      continue;
-    }
-    if (date < startDate || !isWorkday(date, schedule)) continue;
-    const dayOver = date < today || secondsOfDay >= schedule.workEndMinutes * 60;
-    if (dayOver) days.push({ date, status: 'absent', missingCheckOut: false, record: null });
+  for (let date = from; date <= minDate(to, context.today); date = addDays(date, 1)) {
+    const record = byDate.get(date) ?? null;
+    const status = dayStatus(date, record, context);
+    if (status === 'off' || status === 'pending') continue;
+    days.push({ date, status, missingCheckOut: Boolean(record && !record.checkOutAt && date < context.today), record });
   }
 
   return days.reverse();
+}
+
+/** Day-by-day attendance for one 'YYYY-MM' month, newest first. */
+export function buildMonth({ month, ...rest }) {
+  const { first, last } = monthBounds(month);
+  return buildRange({ from: first, to: last, ...rest });
+}
+
+/** Monday–Sunday of the current week, each with its status. */
+export function buildWeek({ records, ...context }) {
+  const byDate = new Map(records.map((record) => [record.date, record]));
+  const monday = startOfWeek(context.today);
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(monday, i);
+    return { date, status: dayStatus(date, byDate.get(date) ?? null, context) };
+  });
 }
 
 export function summarizeMonth(days, timeZone) {

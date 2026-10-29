@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildMonth, isLateCheckIn, isWorkday, summarizeMonth, todayState } from '../src/lib/attendance.js';
+import {
+  buildMonth,
+  buildWeek,
+  dayStatus,
+  isLateCheckIn,
+  isWorkday,
+  summarizeMonth,
+  todayState,
+} from '../src/lib/attendance.js';
 
 const TZ = 'Asia/Kolkata';
 const schedule = {
@@ -104,6 +112,44 @@ describe('buildMonth', () => {
 
   it('returns nothing for a future month', () => {
     assert.deepEqual(buildMonth({ ...base, month: '2026-11', secondsOfDay: hms(10) }), []);
+  });
+});
+
+describe('dayStatus', () => {
+  const context = { today: '2026-10-07', secondsOfDay: hms(10), startDate: '2026-10-01', schedule };
+
+  it('classifies attended, absent, upcoming and off days', () => {
+    assert.equal(dayStatus('2026-10-05', record('2026-10-05', '09:40', null, true), context), 'late');
+    assert.equal(dayStatus('2026-10-06', null, context), 'absent');
+    assert.equal(dayStatus('2026-10-07', null, context), 'pending'); // today, before workEnd
+    assert.equal(dayStatus('2026-10-08', null, context), 'pending'); // future workday
+    assert.equal(dayStatus('2026-10-10', null, context), 'off'); // Saturday
+    assert.equal(dayStatus('2026-10-02', null, context), 'off'); // holiday
+    assert.equal(dayStatus('2026-09-30', null, context), 'off'); // before start date
+  });
+});
+
+describe('buildWeek', () => {
+  it('returns Monday to Sunday of the current week', () => {
+    const week = buildWeek({
+      records: [record('2026-10-05', '09:00', '18:00')],
+      today: '2026-10-07',
+      secondsOfDay: hms(10),
+      startDate: '2026-10-01',
+      schedule,
+    });
+    assert.deepEqual(
+      week.map((d) => [d.date, d.status]),
+      [
+        ['2026-10-05', 'present'],
+        ['2026-10-06', 'absent'],
+        ['2026-10-07', 'pending'],
+        ['2026-10-08', 'pending'],
+        ['2026-10-09', 'pending'],
+        ['2026-10-10', 'off'],
+        ['2026-10-11', 'off'],
+      ],
+    );
   });
 });
 
