@@ -145,11 +145,14 @@ async function seedIfEmpty(client) {
 
   const { rows: [{ count: adminCount }] } = await client.query('SELECT count(*)::int AS count FROM admins');
   if (adminCount === 0) {
-    // ADMIN_EMAIL / ADMIN_PASSWORD (if set) replace the demo admin, so a
-    // deployment never starts with the published demo password.
+    // ADMIN_EMAIL / ADMIN_PASSWORD (if set) replace the demo admin. Vercel
+    // deployments are public, so they never get the published demo password:
+    // without ADMIN_PASSWORD they start with no admin until it is set.
+    const deployed = ['production', 'preview'].includes(process.env.VERCEL_ENV);
     const admins = process.env.ADMIN_PASSWORD
       ? [{ name: 'Admin', email: process.env.ADMIN_EMAIL ?? seed.admins[0].email, passwordHash: await bcrypt.hash(process.env.ADMIN_PASSWORD, 10) }]
-      : seed.admins ?? [];
+      : deployed ? [] : seed.admins ?? [];
+    if (admins.length === 0) console.warn('No admin account created: set ADMIN_PASSWORD and redeploy.');
     for (const a of admins) {
       await client.query('INSERT INTO admins (name, email, password_hash) VALUES ($1, $2, $3)', [a.name, a.email.toLowerCase(), a.passwordHash]);
     }

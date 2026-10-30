@@ -156,9 +156,10 @@ Environment variables (`backend/.env` locally, Project Settings → Environment 
    include `?sslmode=require` for hosted databases.
 3. Add `JWT_SECRET` under **Settings → Environment Variables**. You can generate one with:
    `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`
-4. Set `ADMIN_PASSWORD` (and optionally `ADMIN_EMAIL`) **before the first deploy**, so the
-   first admin account doesn't use the published demo password. If the database already has
-   an admin, change its password in **Settings → Account & Security** instead.
+4. Set `ADMIN_PASSWORD` (and optionally `ADMIN_EMAIL`) to create the first admin account.
+   Deployments never use the published demo password: until `ADMIN_PASSWORD` is set (and the
+   project redeployed) nobody can sign in to `/admin`. If the database already has an admin,
+   change its password in **Settings → Account & Security** instead.
 5. Deploy. Tables are created or migrated automatically on the first request. Check
    `https://<your-app>.vercel.app/api/health`; it should return `{"status":"ok","database":"ok"}`.
 
