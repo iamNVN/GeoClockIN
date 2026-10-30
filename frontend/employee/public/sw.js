@@ -5,9 +5,10 @@
 //   when offline.
 // - /assets/* (hashed by Vite) and /brand/* images, icons: cache first.
 // - /api/*: never cached — attendance must always reach the server.
+// - /admin/*: left alone — the admin dashboard is a separate app.
 //
 // Bump VERSION when files in /brand change (they keep the same URL).
-const VERSION = 'v1';
+const VERSION = 'v2';
 const STATIC_CACHE = `geoclockin-static-${VERSION}`;
 const PAGE_CACHE = `geoclockin-pages-${VERSION}`;
 const PRECACHE = ['/brand/logo.webp', '/brand/office-scene.svg', '/favicon.png'];
@@ -36,7 +37,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request));

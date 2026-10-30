@@ -8,8 +8,10 @@ const apiProxy = {
   },
 };
 
+// Builds into the repository's dist/ (the admin dashboard goes to dist/admin).
 export default defineConfig({
   plugins: [react()],
+  build: { outDir: '../../dist', emptyOutDir: true },
   server: { port: 5173, proxy: apiProxy },
   preview: { port: 4173, proxy: apiProxy },
 });
