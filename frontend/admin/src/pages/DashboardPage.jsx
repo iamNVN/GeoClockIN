@@ -1,7 +1,7 @@
 import { Clock, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { EmployeeCell } from '../components/AttendanceTable.jsx';
+import { EmployeeCell, MobileDayCell } from '../components/AttendanceTable.jsx';
 import { DepartmentBars, Legend, TrendChart } from '../components/Charts.jsx';
 import { DayKpis } from '../components/DayKpis.jsx';
 import { EmptyState, PageHead, Skeleton, StatusPill, TableSkeleton } from '../components/ui.jsx';
@@ -75,7 +75,7 @@ export default function DashboardPage() {
               </Link>
             </header>
             <div className="table-wrap">
-              <table className="table table--stack">
+              <table className="table table--compact">
                 <thead>
                   <tr>
                     <th scope="col">Employee</th>
@@ -97,20 +97,17 @@ export default function DashboardPage() {
                       </td>
                     </tr>
                   ) : (
-                    data.recent.map(({ employee, record, status }, i) => (
-                      <tr key={employee.id} className="reveal-row" style={{ '--i': i }}>
-                        <td className="td--primary">
-                          <EmployeeCell employee={employee} />
+                    data.recent.map((row, i) => (
+                      <tr key={row.employee.id} className="reveal-row" style={{ '--i': i }}>
+                        <MobileDayCell row={row} />
+                        <td>
+                          <EmployeeCell employee={row.employee} />
                         </td>
-                        <td data-label="Department">{employee.department || '—'}</td>
-                        <td className="tabular" data-label="Check In">
-                          {formatTime(record?.checkInAt)}
-                        </td>
-                        <td className="tabular" data-label="Check Out">
-                          {formatTime(record?.checkOutAt)}
-                        </td>
-                        <td data-label="Status">
-                          <StatusPill status={status} />
+                        <td>{row.employee.department || '—'}</td>
+                        <td className="tabular">{formatTime(row.record?.checkInAt)}</td>
+                        <td className="tabular">{formatTime(row.record?.checkOutAt)}</td>
+                        <td>
+                          <StatusPill status={row.status} />
                         </td>
                       </tr>
                     ))

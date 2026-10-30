@@ -38,30 +38,63 @@ export function EmployeeCell({ employee }) {
   );
 }
 
+/**
+ * Phone layout of a day row, shown instead of the columns (see `.table--compact`):
+ * name and "ID (Department)" beside the status, then check-in and check-out.
+ */
+export function MobileDayCell({ row, actions }) {
+  const { employee, record, status, isLate } = row;
+  return (
+    <td className="td-mobile">
+      <div className="m-row">
+        <strong className="m-row__name">{employee.name}</strong>
+        <span className="m-row__meta">
+          {employee.id}
+          {employee.department && ` (${employee.department})`}
+        </span>
+        <span className="m-row__status">
+          <StatusPill status={status} />
+          {actions}
+        </span>
+        <div className="m-row__times">
+          <span>
+            <small>Check in</small>
+            <strong>
+              {formatTime(record?.checkInAt)}
+              {isLate && status !== 'late' && <span className="tag tag--late">Late</span>}
+            </strong>
+          </span>
+          <span>
+            <small>Check out</small>
+            <strong>{formatTime(record?.checkOutAt)}</strong>
+          </span>
+        </div>
+      </div>
+    </td>
+  );
+}
+
 /** One employee's day. `actions` renders the last cell when given. */
 export function AttendanceRow({ row, index, actions }) {
   const { employee, record, status, isLate } = row;
   return (
     <tr className="reveal-row" style={{ '--i': index }}>
+      <MobileDayCell row={row} actions={actions} />
       <td className="table__index">{index}</td>
-      <td className="td--primary">
+      <td>
         <EmployeeCell employee={employee} />
       </td>
-      <td data-label="Department">{employee.department || '—'}</td>
-      <td className="tabular" data-label="Check In">
+      <td>{employee.department || '—'}</td>
+      <td className="tabular">
         {formatTime(record?.checkInAt)}
         {isLate && status !== 'late' && <span className="tag tag--late">Late</span>}
       </td>
-      <td className="tabular" data-label="Check Out">
-        {formatTime(record?.checkOutAt)}
-      </td>
-      <td className="tabular" data-label="Work Hours">
-        {formatDuration(record?.workedMinutes)}
-      </td>
-      <td data-label="Status">
+      <td className="tabular">{formatTime(record?.checkOutAt)}</td>
+      <td className="tabular">{formatDuration(record?.workedMinutes)}</td>
+      <td>
         <StatusPill status={status} />
       </td>
-      <td data-label="Location">
+      <td>
         <LocationCell record={record} />
       </td>
       {actions && <td className="table__actions">{actions}</td>}
