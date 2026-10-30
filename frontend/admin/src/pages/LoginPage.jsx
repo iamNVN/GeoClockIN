@@ -12,35 +12,6 @@ const FEATURES = [
   { Icon: Users, title: 'Manage Employees', text: 'Add, manage and control access' },
 ];
 
-/** A small illustrative dashboard preview for the welcome panel. */
-function Preview() {
-  const bars = [62, 70, 58, 76, 66, 82, 74];
-  return (
-    <div className="auth-preview" aria-hidden="true">
-      <div className="auth-preview__head">
-        <span className="auth-preview__dot" />
-        <span>Good Morning, Admin</span>
-      </div>
-      <div className="auth-preview__kpis">
-        <span className="auth-preview__kpi auth-preview__kpi--green">
-          <strong>32</strong> Present
-        </span>
-        <span className="auth-preview__kpi auth-preview__kpi--red">
-          <strong>6</strong> Absent
-        </span>
-        <span className="auth-preview__kpi auth-preview__kpi--amber">
-          <strong>4</strong> Late
-        </span>
-      </div>
-      <div className="auth-preview__chart">
-        {bars.map((h, i) => (
-          <span key={i} style={{ height: `${h}%`, '--i': i }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function LoginPage() {
   const { status, login, sessionExpired } = useAuth();
   const location = useLocation();
@@ -98,7 +69,6 @@ export default function LoginPage() {
             </li>
           ))}
         </ul>
-        <Preview />
       </section>
 
       <section className="auth__panel">

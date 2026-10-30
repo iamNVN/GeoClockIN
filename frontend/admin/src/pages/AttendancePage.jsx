@@ -111,7 +111,7 @@ export default function AttendancePage() {
         />
       </PageHead>
 
-      <DayKpis kpis={data?.kpis} loading={!data} detailed={false} />
+      <DayKpis kpis={data?.kpis} loading={!data} />
 
       <section className="card filters reveal" style={{ '--i': 4 }}>
         <label className="field">

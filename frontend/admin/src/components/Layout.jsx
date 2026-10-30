@@ -1,11 +1,13 @@
 import {
   Bell,
+  Building2,
   CalendarDays,
   ChartNoAxesColumn,
   ChevronDown,
   Clock,
   LayoutGrid,
   LogOut,
+  MapPin,
   Menu as MenuIcon,
   Search,
   Settings,
@@ -54,8 +56,16 @@ function Sidebar({ open, onClose }) {
         </nav>
         {organization && (
           <div className="sidebar__org">
-            <p className="sidebar__org-name">{organization.companyName}</p>
-            <p className="sidebar__org-office">{organization.officeName}</p>
+            <span className="sidebar__org-icon">
+              <Building2 aria-hidden="true" />
+            </span>
+            <div className="sidebar__org-text">
+              <p className="sidebar__org-name">{organization.companyName}</p>
+              <p className="sidebar__org-office">
+                <MapPin aria-hidden="true" />
+                {organization.officeName}
+              </p>
+            </div>
           </div>
         )}
       </aside>

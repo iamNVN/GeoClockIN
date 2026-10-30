@@ -23,6 +23,7 @@ import { download, qs } from '../lib/api.js';
 import { addDays, formatDate, formatDuration, formatTime, monthStart } from '../lib/format.js';
 
 const PAGE_SIZE = 10;
+const share = (part, whole) => (whole ? Math.round((part / whole) * 100) : 0);
 
 const REPORTS = [
   { type: 'summary', title: 'Attendance Summary', text: 'Overall attendance statistics', Icon: ChartNoAxesColumn, tone: 'green' },
@@ -73,38 +74,7 @@ export default function ReportsPage() {
         </button>
       </PageHead>
 
-      <div className="kpis">
-        <KpiCard index={0} tone="green" Icon={Users} value={totals?.employees} label="Total Employees" loading={!data} />
-        <KpiCard
-          index={1}
-          tone="green"
-          Icon={CalendarCheck}
-          value={totals?.attended}
-          label="Total Present"
-          sub={totals && `${totals.rate ?? 0}% attendance rate`}
-          loading={!data}
-        />
-        <KpiCard
-          index={2}
-          tone="red"
-          Icon={UserRound}
-          value={totals?.absent}
-          label="Total Absent"
-          sub={totals && `${totals.tracked ? Math.round((totals.absent / totals.tracked) * 1000) / 10 : 0}% of days`}
-          loading={!data}
-        />
-        <KpiCard
-          index={3}
-          tone="amber"
-          Icon={Clock}
-          value={totals?.late}
-          label="Total Late"
-          sub={totals && `${totals.tracked ? Math.round((totals.late / totals.tracked) * 1000) / 10 : 0}% of days`}
-          loading={!data}
-        />
-      </div>
-
-      <section className="card filters filters--reports reveal" style={{ '--i': 4 }}>
+      <section className="card filters filters--reports reveal">
         <div className="field">
           <span className="field__label">Date Range</span>
           <div className="range">
@@ -163,6 +133,37 @@ export default function ReportsPage() {
           ))}
         </div>
       </section>
+
+      <div className="kpis">
+        <KpiCard index={1} tone="blue" Icon={Users} value={totals?.employees} label="Employees" loading={!data} />
+        <KpiCard
+          index={2}
+          tone="green"
+          Icon={CalendarCheck}
+          value={totals?.attended}
+          label="Present"
+          percent={totals ? share(totals.attended, totals.tracked) : undefined}
+          loading={!data}
+        />
+        <KpiCard
+          index={3}
+          tone="red"
+          Icon={UserRound}
+          value={totals?.absent}
+          label="Absent"
+          percent={totals ? share(totals.absent, totals.tracked) : undefined}
+          loading={!data}
+        />
+        <KpiCard
+          index={4}
+          tone="amber"
+          Icon={Clock}
+          value={totals?.late}
+          label="Late"
+          percent={totals ? share(totals.late, totals.tracked) : undefined}
+          loading={!data}
+        />
+      </div>
 
       {report.error && !data ? (
         <section className="card">

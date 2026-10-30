@@ -61,7 +61,7 @@ export function Ring({ value, tone = 'green', size = 64, stroke = 6 }) {
  * KPI card. tone: green | red | amber | blue.
  * With `percent`, shows a ring; otherwise a plain figure.
  */
-export function KpiCard({ tone, Icon, value, label, sub, percent, index = 0, loading = false }) {
+export function KpiCard({ tone, Icon, value, label, percent, index = 0, loading = false }) {
   return (
     <section className={`kpi kpi--${tone} reveal`} style={{ '--i': index }}>
       <span className="kpi__icon">
@@ -70,7 +70,6 @@ export function KpiCard({ tone, Icon, value, label, sub, percent, index = 0, loa
       <div className="kpi__text">
         {loading ? <Skeleton width={56} height={28} /> : <p className="kpi__value">{value}</p>}
         <p className="kpi__label">{label}</p>
-        {sub && <p className="kpi__sub">{loading ? <Skeleton width={90} height={11} /> : sub}</p>}
       </div>
       {percent !== undefined && !loading && <Ring value={percent} tone={tone} size={52} stroke={5} />}
     </section>
