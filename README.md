@@ -99,10 +99,20 @@ Browsers only allow geolocation on secure origins. `http://localhost` counts as 
 - **Reports:** any date range, department or employee. Charts plus summary, department,
   employee, late arrival, absence and missing check-out views. *Export Report* downloads an
   Excel workbook with all of them.
-- **Settings:** company details and time zone; office location (drag the pin on an
+- **Settings:** company details, logo and time zone; office location (drag the pin on an
   OpenStreetMap map or search for an address) with a geofence radius slider; working hours,
   grace period, workdays, tracking start date and holidays; departments; and the admin's own
   account and password.
+
+The dashboard works on phones too: tables become stacked cards and dialogs open as bottom
+sheets.
+
+### Company logo
+
+Upload a PNG, JPG, WebP or SVG (up to 2 MB) in **Settings → General**. It replaces the
+GeoClockIN logo in both apps: the dashboard at once, the employee app the next time it is
+opened (it is cached for up to five minutes). **Remove** restores the default. The logo is
+stored in the database and served from `/api/branding/logo`.
 
 ### Excel import formats
 

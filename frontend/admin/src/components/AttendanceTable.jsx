@@ -44,20 +44,24 @@ export function AttendanceRow({ row, index, actions }) {
   return (
     <tr className="reveal-row" style={{ '--i': index }}>
       <td className="table__index">{index}</td>
-      <td>
+      <td className="td--primary">
         <EmployeeCell employee={employee} />
       </td>
-      <td>{employee.department || '—'}</td>
-      <td className="tabular">
+      <td data-label="Department">{employee.department || '—'}</td>
+      <td className="tabular" data-label="Check In">
         {formatTime(record?.checkInAt)}
         {isLate && status !== 'late' && <span className="tag tag--late">Late</span>}
       </td>
-      <td className="tabular">{formatTime(record?.checkOutAt)}</td>
-      <td className="tabular">{formatDuration(record?.workedMinutes)}</td>
-      <td>
+      <td className="tabular" data-label="Check Out">
+        {formatTime(record?.checkOutAt)}
+      </td>
+      <td className="tabular" data-label="Work Hours">
+        {formatDuration(record?.workedMinutes)}
+      </td>
+      <td data-label="Status">
         <StatusPill status={status} />
       </td>
-      <td>
+      <td data-label="Location">
         <LocationCell record={record} />
       </td>
       {actions && <td className="table__actions">{actions}</td>}

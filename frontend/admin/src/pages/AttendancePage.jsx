@@ -155,7 +155,7 @@ export default function AttendancePage() {
 
       <section className="card card--flush reveal" style={{ '--i': 5 }}>
         <div className="table-wrap">
-          <table className="table">
+          <table className="table table--stack">
             <thead>
               <tr>
                 <th scope="col">#</th>

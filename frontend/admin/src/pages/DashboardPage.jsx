@@ -75,7 +75,7 @@ export default function DashboardPage() {
               </Link>
             </header>
             <div className="table-wrap">
-              <table className="table">
+              <table className="table table--stack">
                 <thead>
                   <tr>
                     <th scope="col">Employee</th>
@@ -99,13 +99,17 @@ export default function DashboardPage() {
                   ) : (
                     data.recent.map(({ employee, record, status }, i) => (
                       <tr key={employee.id} className="reveal-row" style={{ '--i': i }}>
-                        <td>
+                        <td className="td--primary">
                           <EmployeeCell employee={employee} />
                         </td>
-                        <td>{employee.department || '—'}</td>
-                        <td className="tabular">{formatTime(record?.checkInAt)}</td>
-                        <td className="tabular">{formatTime(record?.checkOutAt)}</td>
-                        <td>
+                        <td data-label="Department">{employee.department || '—'}</td>
+                        <td className="tabular" data-label="Check In">
+                          {formatTime(record?.checkInAt)}
+                        </td>
+                        <td className="tabular" data-label="Check Out">
+                          {formatTime(record?.checkOutAt)}
+                        </td>
+                        <td data-label="Status">
                           <StatusPill status={status} />
                         </td>
                       </tr>

@@ -75,7 +75,7 @@ export default function ReportsPage() {
       </PageHead>
 
       <section className="card filters filters--reports reveal">
-        <div className="field">
+        <div className="field filters__range">
           <span className="field__label">Date Range</span>
           <div className="range">
             <span className="input">
@@ -250,6 +250,7 @@ function tableFor(type, data) {
   if (type === 'department') {
     return {
       columns: ['Department', 'Expected Days', 'Present', 'On Time', 'Late', 'Absent', 'Attendance %'],
+      primary: 0,
       rows: data.departments.map((d) => ({
         key: d.department,
         search: d.department,
@@ -261,6 +262,7 @@ function tableFor(type, data) {
     const list = { late: data.late, absent: data.absences, not_checked_out: data.notCheckedOut }[type];
     return {
       columns: ['Date', 'Employee', 'Department', 'Check In', 'Check Out', 'Status'],
+      primary: 1,
       rows: [...list].reverse().map((d) => ({
         key: `${d.employee.id}|${d.date}`,
         search: `${d.employee.name} ${d.employee.id} ${d.employee.department}`,
@@ -277,6 +279,7 @@ function tableFor(type, data) {
   }
   return {
     columns: ['Employee', 'Department', 'Total Days', 'Present', 'Absent', 'Late', ...(type === 'employee' ? ['Hours', 'Missed Check-outs'] : []), 'Attendance %'],
+    primary: 0,
     rows: data.employees.map((s) => ({
       key: s.employee.id,
       search: `${s.employee.name} ${s.employee.id} ${s.employee.department}`,
@@ -318,7 +321,7 @@ function DetailedReport({ type, data }) {
         />
       </header>
       <div className="table-wrap">
-        <table className="table">
+        <table className="table table--stack">
           <thead>
             <tr>
               <th scope="col">#</th>
@@ -344,11 +347,17 @@ function DetailedReport({ type, data }) {
               rows.map((r, i) => (
                 <tr key={r.key} className="reveal-row" style={{ '--i': i }}>
                   <td className="table__index">{(current - 1) * PAGE_SIZE + i + 1}</td>
-                  {r.cells.map((cell, c) => (
-                    <td key={c} className={typeof cell === 'number' ? 'tabular' : undefined}>
-                      {cell}
-                    </td>
-                  ))}
+                  {r.cells.map((cell, c) =>
+                    c === table.primary ? (
+                      <td key={c} className="td--primary">
+                        {cell}
+                      </td>
+                    ) : (
+                      <td key={c} className={typeof cell === 'number' ? 'tabular' : undefined} data-label={table.columns[c]}>
+                        {cell}
+                      </td>
+                    ),
+                  )}
                 </tr>
               ))
             )}

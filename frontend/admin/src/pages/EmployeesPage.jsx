@@ -201,7 +201,7 @@ export default function EmployeesPage() {
 
       <section className="card card--flush reveal" style={{ '--i': 5 }}>
         <div className="table-wrap">
-          <table className="table">
+          <table className="table table--stack">
             <thead>
               <tr>
                 <th scope="col" className="table__check">
@@ -248,7 +248,7 @@ export default function EmployeesPage() {
                       <input type="checkbox" checked={selected.has(e.id)} onChange={() => toggle(e.id)} aria-label={`Select ${e.name}`} />
                     </td>
                     <td className="table__index">{(current - 1) * PAGE_SIZE + i + 1}</td>
-                    <td>
+                    <td className="td--primary">
                       <span className="table__employee">
                         <Avatar name={e.name} />
                         <span>
@@ -257,13 +257,17 @@ export default function EmployeesPage() {
                         </span>
                       </span>
                     </td>
-                    <td className="tabular">{e.id}</td>
-                    <td>{e.department || '—'}</td>
-                    <td>{e.designation || '—'}</td>
-                    <td>
+                    <td className="tabular" data-label="Employee ID">
+                      {e.id}
+                    </td>
+                    <td data-label="Department">{e.department || '—'}</td>
+                    <td data-label="Role">{e.designation || '—'}</td>
+                    <td data-label="Status">
                       <StatusPill status={e.active ? 'active' : 'inactive'} />
                     </td>
-                    <td className="tabular">{formatDate(e.joinedOn)}</td>
+                    <td className="tabular" data-label="Join Date">
+                      {formatDate(e.joinedOn)}
+                    </td>
                     <td className="table__actions">
                       <Menu
                         label={`Actions for ${e.name}`}
