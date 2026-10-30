@@ -2,6 +2,7 @@ import express, { Router } from 'express';
 import { audit } from '../../audit.js';
 import { deleteLogo, logoVersion, MAX_LOGO_BYTES, saveLogo } from '../../branding.js';
 import { query } from '../../db.js';
+import { HOLIDAY_PRESETS } from '../../lib/holidayPresets.js';
 import { saveSettings, storableSettings } from '../../settings.js';
 
 const router = Router();
@@ -13,6 +14,7 @@ router.get('/', async (req, res) => {
     updatedAt: rows[0]?.updated_at ?? null,
     updatedBy: rows[0]?.updated_by ?? null,
     logoVersion: await logoVersion(),
+    holidayPresets: HOLIDAY_PRESETS,
   });
 });
 

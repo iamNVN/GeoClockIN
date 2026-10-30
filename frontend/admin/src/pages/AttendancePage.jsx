@@ -19,7 +19,7 @@ import { Menu } from '../components/Menu.jsx';
 import { Modal } from '../components/Modal.jsx';
 import { paginate, Pagination } from '../components/Pagination.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { EmptyState, PageHead, SearchField, SelectField, TableSkeleton } from '../components/ui.jsx';
+import { EmptyState, HolidayNotice, PageHead, SearchField, SelectField, TableSkeleton } from '../components/ui.jsx';
 import { useApi } from '../hooks/useApi.js';
 import { api, download, qs } from '../lib/api.js';
 import { addDays, formatLongDate, inputTime, monthStart } from '../lib/format.js';
@@ -111,6 +111,7 @@ export default function AttendancePage() {
         />
       </PageHead>
 
+      <HolidayNotice name={data?.holiday} />
       <DayKpis kpis={data?.kpis} loading={!data} />
 
       <section className="card filters reveal" style={{ '--i': 4 }}>

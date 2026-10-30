@@ -60,6 +60,7 @@ export const STATUS_LABELS = {
   not_checked_out: 'Not Checked Out',
   pending: 'Not Checked In',
   off: 'Day Off',
+  holiday: 'Holiday',
 };
 
 /** Spreadsheet row for one employee-day. */

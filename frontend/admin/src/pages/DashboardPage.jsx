@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { EmployeeCell, MobileDayCell } from '../components/AttendanceTable.jsx';
 import { DepartmentBars, Legend, TrendChart } from '../components/Charts.jsx';
 import { DayKpis } from '../components/DayKpis.jsx';
-import { EmptyState, PageHead, Skeleton, StatusPill, TableSkeleton } from '../components/ui.jsx';
+import { EmptyState, HolidayNotice, PageHead, Skeleton, StatusPill, TableSkeleton } from '../components/ui.jsx';
 import { useApi } from '../hooks/useApi.js';
 import { qs } from '../lib/api.js';
 import { formatLongDate, formatTime } from '../lib/format.js';
@@ -33,6 +33,7 @@ export default function DashboardPage() {
         </section>
       ) : (
         <>
+          <HolidayNotice name={data?.holiday} />
           <DayKpis kpis={data?.kpis} loading={!data} />
 
           <div className="grid-2">

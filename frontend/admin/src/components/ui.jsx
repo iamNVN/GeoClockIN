@@ -1,5 +1,5 @@
 // Small shared building blocks.
-import { ChevronDown, Search } from 'lucide-react';
+import { CalendarHeart, ChevronDown, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { initials } from '../lib/format.js';
 
@@ -18,9 +18,23 @@ const STATUS = {
   not_checked_out: 'Not Checked Out',
   pending: 'Not Checked In',
   off: 'Day Off',
+  holiday: 'Holiday',
   active: 'Active',
   inactive: 'Inactive',
 };
+
+/** Banner shown on a holiday: nobody is expected in, so nobody is marked absent. */
+export function HolidayNotice({ name }) {
+  if (!name) return null;
+  return (
+    <p className="notice notice--holiday pop-in">
+      <CalendarHeart aria-hidden="true" />
+      <span>
+        <strong>{name}</strong> is a holiday. Attendance isn’t expected and nobody is marked absent.
+      </span>
+    </p>
+  );
+}
 
 export function StatusPill({ status, children }) {
   return <span className={`pill pill--${status}`}>{children ?? STATUS[status] ?? status}</span>;

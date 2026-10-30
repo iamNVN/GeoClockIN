@@ -179,6 +179,7 @@ function statusChip(day) {
   const { record } = day;
   if (record?.checkOutAt) return { tone: 'present', label: 'Completed' };
   if (record) return record.isLate ? { tone: 'late', label: 'Late' } : { tone: 'present', label: 'On time' };
+  if (day.holiday) return { tone: 'holiday', label: day.holiday };
   if (!day.isWorkday) return { tone: 'muted', label: 'Day off' };
   return { tone: 'muted', label: 'Not checked in' };
 }
@@ -230,6 +231,7 @@ function ShiftProgress({ day, now }) {
   let caption;
   if (record?.checkOutAt) caption = `Worked ${describeDuration(record.workedMinutes)} today`;
   else if (record) caption = `Working for ${describeDuration(Math.floor((now - new Date(record.checkInAt)) / 60_000))}`;
+  else if (day.holiday) caption = 'Holiday · no shift today';
   else if (!day.isWorkday) caption = 'No shift today';
   else if (current < start) caption = `Shift starts in ${formatDuration(start - current)}`;
   else if (current < end) caption = `${formatDuration(end - current)} left in shift`;
@@ -304,11 +306,12 @@ const STATUS_WORDS = {
   absent: 'absent',
   pending: 'upcoming',
   off: 'day off',
+  holiday: 'holiday',
 };
 
 function WeekCard({ week, today }) {
   const attended = week.filter((d) => d.status === 'present' || d.status === 'late').length;
-  const workdays = week.filter((d) => d.status !== 'off').length;
+  const workdays = week.filter((d) => d.status !== 'off' && d.status !== 'holiday').length;
 
   return (
     <section className="card week-card reveal" style={stagger(6)} aria-labelledby="week-title">
@@ -327,7 +330,8 @@ function WeekCard({ week, today }) {
               key={d.date}
               className={`week__day week__day--${d.status}${isToday ? ' is-today' : ''}`}
               style={stagger(i)}
-              aria-label={`${weekday} ${day}: ${isToday ? 'today, ' : ''}${STATUS_WORDS[d.status]}`}
+              aria-label={`${weekday} ${day}: ${isToday ? 'today, ' : ''}${d.holiday ? `holiday (${d.holiday})` : STATUS_WORDS[d.status]}`}
+              title={d.holiday ?? undefined}
             >
               <span className="week__label">{weekday.slice(0, 1)}</span>
               <span className="week__dot">{day}</span>

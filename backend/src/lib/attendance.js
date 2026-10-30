@@ -5,6 +5,15 @@ export function isWorkday(date, schedule) {
   return schedule.workdays.includes(weekdayOf(date)) && !schedule.holidayDates.includes(date);
 }
 
+/** The holiday's name when `date` is a holiday, otherwise null. */
+export function holidayOn(date, schedule) {
+  if (!schedule.holidayDates.includes(date)) return null;
+  return schedule.holidays?.find((h) => h.date === date)?.name || 'Holiday';
+}
+
+/** Weekends (`off`) and holidays: no attendance is expected. */
+export const isDayOff = (status) => status === 'off' || status === 'holiday';
+
 /** Late = checked in on a workday after workStart + grace period (to the second). */
 export function isLateCheckIn(date, secondsOfDay, schedule) {
   return isWorkday(date, schedule) && secondsOfDay > (schedule.workStartMinutes + schedule.graceMinutes) * 60;
@@ -37,6 +46,7 @@ export function todayState(date, record, schedule) {
   return {
     date,
     isWorkday: isWorkday(date, schedule),
+    holiday: holidayOn(date, schedule),
     status,
     canCheckIn: status === 'not_checked_in',
     canCheckOut: status === 'checked_in',
@@ -50,11 +60,14 @@ export function todayState(date, record, schedule) {
  * - `absent`: a workday on or after `startDate` with no check-in, once it has
  *   passed (today counts as passed after workEnd).
  * - `pending`: a workday still to come, or today before workEnd.
- * - `off`: weekend, holiday, or before `startDate`.
+ * - `holiday`: a holiday from the settings.
+ * - `off`: a non-working weekday (weekend), or before `startDate`.
  */
 export function dayStatus(date, record, { today, secondsOfDay, startDate, schedule }) {
   if (record) return record.isLate ? 'late' : 'present';
-  if (date < startDate || !isWorkday(date, schedule)) return 'off';
+  if (date < startDate) return 'off';
+  if (schedule.holidayDates.includes(date)) return 'holiday';
+  if (!isWorkday(date, schedule)) return 'off';
   if (date > today || (date === today && secondsOfDay < schedule.workEndMinutes * 60)) return 'pending';
   return 'absent';
 }
@@ -70,7 +83,7 @@ export function buildRange({ from, to, records, ...context }) {
   for (let date = from; date <= minDate(to, context.today); date = addDays(date, 1)) {
     const record = byDate.get(date) ?? null;
     const status = dayStatus(date, record, context);
-    if (status === 'off' || status === 'pending') continue;
+    if (isDayOff(status) || status === 'pending') continue;
     days.push({ date, status, missingCheckOut: Boolean(record && !record.checkOutAt && date < context.today), record });
   }
 
@@ -83,13 +96,13 @@ export function buildMonth({ month, ...rest }) {
   return buildRange({ from: first, to: last, ...rest });
 }
 
-/** Monday–Sunday of the current week, each with its status. */
+/** Monday–Sunday of the current week, each with its status (and holiday name). */
 export function buildWeek({ records, ...context }) {
   const byDate = new Map(records.map((record) => [record.date, record]));
   const monday = startOfWeek(context.today);
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(monday, i);
-    return { date, status: dayStatus(date, byDate.get(date) ?? null, context) };
+    return { date, status: dayStatus(date, byDate.get(date) ?? null, context), holiday: holidayOn(date, context.schedule) };
   });
 }
 

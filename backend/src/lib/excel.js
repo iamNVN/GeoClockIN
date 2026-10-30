@@ -30,6 +30,58 @@ export function addTable(workbook, name, columns, rows) {
   return sheet;
 }
 
+// Rows of an import template that get drop-downs.
+const TEMPLATE_ROWS = 500;
+
+/**
+ * An empty import sheet with the branded header row. Cells are formatted as
+ * text so Excel keeps dates and times as typed; `lists` ({ key: values }) adds
+ * drop-downs to those columns (other values are still accepted).
+ */
+export function addImportSheet(workbook, name, columns, lists = {}) {
+  const sheet = addTable(workbook, name, columns, []);
+  columns.forEach((_, i) => {
+    sheet.getColumn(i + 1).numFmt = '@';
+  });
+
+  const entries = Object.entries(lists).filter(([, values]) => values.length);
+  if (entries.length) {
+    const source = workbook.addWorksheet('Lists', { state: 'hidden' });
+    entries.forEach(([key, values], i) => {
+      values.forEach((value, r) => {
+        source.getCell(r + 1, i + 1).value = value;
+      });
+      const letter = source.getColumn(i + 1).letter;
+      const column = columns.findIndex((c) => c.key === key) + 1;
+      for (let row = 2; row <= TEMPLATE_ROWS + 1; row++) {
+        sheet.getCell(row, column).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          showErrorMessage: false,
+          formulae: [`Lists!$${letter}$1:$${letter}$${values.length}`],
+        };
+      }
+    });
+  }
+  return sheet;
+}
+
+/** A "How to fill" sheet: instructions, then example rows under the same headers. */
+export function addHowToSheet(workbook, lines, columns, examples) {
+  const sheet = workbook.addWorksheet('How to fill');
+  columns.forEach(({ width = 16 }, i) => {
+    sheet.getColumn(i + 1).width = width;
+  });
+  for (const line of lines) sheet.addRow([line]);
+  sheet.addRow([]);
+  sheet.addRow(['Example (fill in the first sheet, not this one):']).font = { bold: true };
+  const header = sheet.addRow(columns.map((c) => c.header));
+  header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+  for (const example of examples) sheet.addRow(columns.map((c) => example[c.key] ?? ''));
+  return sheet;
+}
+
 /** Adds a two-column "Label | Value" sheet (report summaries, filters used). */
 export function addKeyValueSheet(workbook, name, pairs) {
   const sheet = workbook.addWorksheet(name);

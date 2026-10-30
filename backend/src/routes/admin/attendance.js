@@ -4,8 +4,8 @@ import { query, transaction } from '../../db.js';
 import { findEmployeeById, listEmployees } from '../../employees.js';
 import { HttpError } from '../../errors.js';
 import { buildDayRows, summarizeDayRows } from '../../lib/adminStats.js';
-import { isLateCheckIn, serializeRecord } from '../../lib/attendance.js';
-import { addTable, cellDate, cellMinutes, cellText, newWorkbook, readUploadedSheet, sendWorkbook } from '../../lib/excel.js';
+import { holidayOn, isDayOff, isLateCheckIn, serializeRecord } from '../../lib/attendance.js';
+import { addHowToSheet, addImportSheet, addTable, cellDate, cellMinutes, cellText, newWorkbook, readUploadedSheet, sendWorkbook } from '../../lib/excel.js';
 import { addDays, isValidDate, parseClock, zonedClock, zonedTimeToUtc } from '../../lib/time.js';
 import { ATTENDANCE_COLUMNS, attendanceRow, dateParam, loadRecords, officeNow, rowJson } from './common.js';
 
@@ -20,7 +20,14 @@ router.get('/', async (req, res) => {
   const date = dateParam(req.query.date, today, { today });
   const [employees, records] = await Promise.all([listEmployees(), loadRecords(date, date)]);
   const rows = buildDayRows({ date, employees, records, today, secondsOfDay, schedule });
-  res.json({ date, today, kpis: summarizeDayRows(rows), rows: rows.map(rowJson), departments: req.settings.departments });
+  res.json({
+    date,
+    today,
+    holiday: holidayOn(date, schedule),
+    kpis: summarizeDayRows(rows),
+    rows: rows.map(rowJson),
+    departments: req.settings.departments,
+  });
 });
 
 /** Validates an admin-entered or imported day and returns the instants to store. */
@@ -102,7 +109,7 @@ router.get('/export', async (req, res) => {
   const rows = [];
   for (let date = from; date <= to; date = addDays(date, 1)) {
     for (const row of buildDayRows({ date, employees, records, today, secondsOfDay, schedule })) {
-      if (row.status !== 'off' || row.record) rows.push(attendanceRow({ date, ...row }, schedule.timezone));
+      if (!isDayOff(row.status) || row.record) rows.push(attendanceRow({ date, ...row }, schedule.timezone));
     }
   }
   const workbook = newWorkbook();
@@ -118,11 +125,22 @@ const IMPORT_COLUMNS = [
   { header: 'Note', key: 'note', width: 30 },
 ];
 
+// An empty sheet to fill in; the example lives on the "How to fill" sheet.
 router.get('/template', async (req, res) => {
+  const employees = (await listEmployees()).filter((e) => e.active);
   const workbook = newWorkbook();
-  addTable(workbook, 'Attendance', IMPORT_COLUMNS, [
-    { id: 'EMP001', date: '2026-10-01', checkIn: '09:02', checkOut: '18:05', note: 'Paper register' },
-  ]);
+  addImportSheet(workbook, 'Attendance', IMPORT_COLUMNS, { id: employees.map((e) => e.id) });
+  addHowToSheet(
+    workbook,
+    [
+      'One row per employee per day. A row replaces any existing record for that employee and date.',
+      'Required: Employee ID, Date (YYYY-MM-DD or DD/MM/YYYY) and Check In. Check Out and Note are optional.',
+      'Times are office time, as 09:05 or 9:05 AM. Dates cannot be in the future.',
+      'If any row has a problem, nothing is imported and every problem is listed.',
+    ],
+    IMPORT_COLUMNS,
+    [{ id: employees[0]?.id ?? 'EMP001', date: '2026-10-01', checkIn: '09:02', checkOut: '18:05', note: 'Paper register' }],
+  );
   await sendWorkbook(res, workbook, 'attendance-import-template.xlsx');
 });
 

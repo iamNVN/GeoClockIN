@@ -6,6 +6,8 @@
  * managed from the admin dashboard (/admin) and stored in the database —
  * editing this file does not change an existing installation.
  */
+import { INDIAN_GAZETTED_HOLIDAYS } from '../src/lib/holidayPresets.js';
+
 export default {
   company: {
     name: 'ABC Technologies',
@@ -32,8 +34,9 @@ export default {
     graceMinutes: 15,
     // 0 = Sunday … 6 = Saturday.
     workdays: [1, 2, 3, 4, 5],
-    // Company holidays. Not counted as absences.
-    holidays: [],
+    // Holidays are not counted as absences. Starts with the Indian government
+    // (DoPT gazetted) holidays; admins add or remove holidays in Settings.
+    holidays: [...INDIAN_GAZETTED_HOLIDAYS[2026], ...INDIAN_GAZETTED_HOLIDAYS[2027]],
     // Absences are only counted from this date (system go-live) or the
     // employee's joining date, whichever is later.
     trackingStartDate: '2026-10-01',

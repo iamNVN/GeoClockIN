@@ -29,6 +29,8 @@
   --red: #c42f2f;
   --red-solid: #ef4444;
   --red-soft: #feeceb;
+  --violet: #6d28d9;
+  --violet-soft: #efe8fd;
 
   --radius-sm: 10px;
   --radius: 14px;
@@ -670,6 +672,11 @@ svg {
 .badge--muted {
   background: var(--gray-soft);
   color: var(--muted);
+}
+
+.badge--holiday {
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 
 .dot {
@@ -1519,6 +1526,11 @@ svg {
 .week__day--off .week__dot {
   background: transparent;
   color: var(--subtle);
+}
+
+.week__day--holiday .week__dot {
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 
 .week__day.is-today .week__label {

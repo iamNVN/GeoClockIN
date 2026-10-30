@@ -1,6 +1,6 @@
 // Organisation-wide attendance figures for the admin dashboard and reports.
 // Pure functions over employees, serialized records and settings.
-import { dayStatus } from './attendance.js';
+import { dayStatus, holidayOn, isDayOff } from './attendance.js';
 import { addDays, maxDate, minDate, zonedClock } from './time.js';
 
 /** Whether absences can be counted for `employee` on `date`. */
@@ -13,7 +13,7 @@ function tracked(employee, date, schedule) {
 /**
  * One employee on one date, as the admin sees it:
  * present | late | not_checked_out | absent | pending (today, not in yet) |
- * off (weekend/holiday) | untracked (not employed / not tracked yet).
+ * off (weekend) | holiday | untracked (not employed / not tracked yet).
  */
 export function adminDayStatus(employee, date, record, { today, secondsOfDay, schedule }) {
   if (record) return record.checkOutAt ? (record.isLate ? 'late' : 'present') : 'not_checked_out';
@@ -39,7 +39,7 @@ export function buildDayRows({ date, employees, records, today, secondsOfDay, sc
 export function summarizeDayRows(rows) {
   const s = { expected: 0, attended: 0, onTime: 0, late: 0, absent: 0, pending: 0, notCheckedOut: 0 };
   for (const row of rows) {
-    if (row.status === 'off') continue;
+    if (isDayOff(row.status)) continue;
     s.expected += 1;
     if (row.record) {
       s.attended += 1;
@@ -60,7 +60,7 @@ export function summarizeDayRows(rows) {
 export function departmentBreakdown(rows) {
   const map = new Map();
   for (const row of rows) {
-    if (row.status === 'off') continue;
+    if (isDayOff(row.status)) continue;
     const name = row.employee.department || 'Unassigned';
     const d = map.get(name) ?? { department: name, expected: 0, attended: 0, late: 0, absent: 0 };
     d.expected += 1;
@@ -104,7 +104,7 @@ export function buildRangeStats({ from, to, employees, records, today, secondsOf
     for (const employee of employees) {
       const record = lookup.get(`${employee.id}|${date}`) ?? null;
       const status = adminDayStatus(employee, date, record, { today, secondsOfDay, schedule });
-      if (status === 'untracked' || status === 'off' || status === 'pending') continue;
+      if (status === 'untracked' || isDayOff(status) || status === 'pending') continue;
 
       const stats = perEmployee.get(employee.id);
       const deptName = employee.department || 'Unassigned';
@@ -171,4 +171,33 @@ export function buildRangeStats({ from, to, employees, records, today, secondsOf
       .sort((a, b) => b.expected - a.expected),
     log,
   };
+}
+
+/**
+ * The employee daily report: every day from `from` to `to` (capped at today)
+ * for each employee, ordered by employee and then date. Weekends and holidays
+ * are included so each employee's days read like a register; days before an
+ * employee joined, or after they left, are not.
+ */
+export function buildDailyDetail({ from, to, employees, records, today, secondsOfDay, schedule }) {
+  const lookup = byEmployeeDate(records);
+  const last = minDate(to, today);
+  const rows = [];
+  const ordered = [...employees].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  for (const employee of ordered) {
+    for (let date = from; date <= last; date = addDays(date, 1)) {
+      const record = lookup.get(`${employee.id}|${date}`) ?? null;
+      const status = adminDayStatus(employee, date, record, { today, secondsOfDay, schedule });
+      if (status === 'untracked') continue;
+      rows.push({ date, employee, record, status, holiday: holidayOn(date, schedule) });
+    }
+  }
+  return rows;
+}
+
+/** Minutes after the start of work a late check-in happened, else null. */
+export function minutesLate(record, schedule) {
+  if (!record?.isLate) return null;
+  const minutes = Math.floor(zonedClock(new Date(record.checkInAt), schedule.timezone).secondsOfDay / 60);
+  return Math.max(0, minutes - schedule.workStartMinutes);
 }

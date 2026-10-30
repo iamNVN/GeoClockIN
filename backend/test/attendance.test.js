@@ -4,6 +4,7 @@ import {
   buildMonth,
   buildWeek,
   dayStatus,
+  holidayOn,
   isLateCheckIn,
   isWorkday,
   summarizeMonth,
@@ -14,6 +15,7 @@ const TZ = 'Asia/Kolkata';
 const schedule = {
   workdays: [1, 2, 3, 4, 5],
   holidayDates: ['2026-10-02'],
+  holidays: [{ date: '2026-10-02', name: 'Gandhi Jayanti' }],
   workStartMinutes: 9 * 60,
   workEndMinutes: 18 * 60,
   graceMinutes: 15,
@@ -33,6 +35,14 @@ describe('isWorkday', () => {
     assert.equal(isWorkday('2026-10-29', schedule), true); // Thursday
     assert.equal(isWorkday('2026-10-31', schedule), false); // Saturday
     assert.equal(isWorkday('2026-10-02', schedule), false); // holiday
+  });
+});
+
+describe('holidayOn', () => {
+  it('names holidays and ignores other days', () => {
+    assert.equal(holidayOn('2026-10-02', schedule), 'Gandhi Jayanti');
+    assert.equal(holidayOn('2026-10-05', schedule), null);
+    assert.equal(holidayOn('2026-10-02', { ...schedule, holidays: [{ date: '2026-10-02', name: '' }] }), 'Holiday');
   });
 });
 
@@ -124,7 +134,7 @@ describe('dayStatus', () => {
     assert.equal(dayStatus('2026-10-07', null, context), 'pending'); // today, before workEnd
     assert.equal(dayStatus('2026-10-08', null, context), 'pending'); // future workday
     assert.equal(dayStatus('2026-10-10', null, context), 'off'); // Saturday
-    assert.equal(dayStatus('2026-10-02', null, context), 'off'); // holiday
+    assert.equal(dayStatus('2026-10-02', null, context), 'holiday');
     assert.equal(dayStatus('2026-09-30', null, context), 'off'); // before start date
   });
 });

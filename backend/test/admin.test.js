@@ -24,7 +24,7 @@ describe('normalizeSettings', () => {
     const s = normalizeSettings(seed);
     assert.equal(s.schedule.workStartMinutes, 540);
     assert.equal(s.schedule.workEndMinutes, 1080);
-    assert.deepEqual(s.schedule.holidayDates, []);
+    assert.equal(s.schedule.holidayDates[0], '2026-01-26');
   });
 
   it('rejects an end time before the start time', () => {

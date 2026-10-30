@@ -29,6 +29,8 @@
   --blue: #2563eb;
   --blue-soft: #e5efff;
   --blue-tint: #f3f7ff;
+  --violet: #6d28d9;
+  --violet-soft: #efe8fd;
   --green-tint: #f2faf6;
 
   --radius-sm: 8px;
@@ -638,6 +640,11 @@ input[type='checkbox'] {
 .notice--error {
   background: var(--red-soft);
   color: var(--red);
+}
+
+.notice--holiday {
+  background: var(--violet-soft);
+  color: var(--violet);
 }
 
 .chip-row {
@@ -1520,6 +1527,11 @@ input[type='checkbox'] {
   color: var(--muted);
 }
 
+.pill--holiday {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+
 .tag {
   margin-left: 6px;
   padding: 1px 6px;
@@ -1531,6 +1543,12 @@ input[type='checkbox'] {
 .tag--late {
   background: var(--amber-soft);
   color: var(--amber);
+}
+
+.tag--holiday {
+  background: var(--violet-soft);
+  color: var(--violet);
+  white-space: nowrap;
 }
 
 .location-cell {
@@ -2310,6 +2328,62 @@ input[type='checkbox'] {
   gap: 10px;
 }
 
+.holiday-preset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--violet-soft);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--violet-soft) 45%, var(--surface));
+}
+
+.holiday-preset__text {
+  display: grid;
+  gap: 2px;
+}
+
+.holiday-preset__text .muted {
+  font-size: 12.5px;
+}
+
+.holiday-preset__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.holiday-year {
+  display: grid;
+  gap: 4px;
+}
+
+.holiday-year__title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.holiday-year__title .muted {
+  font-weight: 500;
+}
+
+.holiday-row {
+  align-items: baseline;
+}
+
+.holiday-row strong {
+  min-width: 96px;
+}
+
+.holiday-row__day {
+  min-width: 32px;
+  color: var(--violet);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
 .list-rows {
   display: grid;
 }
@@ -3073,4 +3147,9 @@ input[type='checkbox'] {
     animation-delay: 0s !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+.report-note {
+  padding: 10px 20px 0;
+  font-size: 13px;
 }

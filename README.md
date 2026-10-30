@@ -97,12 +97,27 @@ Browsers only allow geolocation on secure origins. `http://localhost` counts as 
 - **Employees:** add, edit, reset passwords, activate and deactivate (one at a time or in
   bulk). Import and export employees as Excel; download a template to fill in.
 - **Reports:** any date range, department or employee. Charts plus summary, department,
-  employee, late arrival, absence and missing check-out views. *Export Report* downloads an
-  Excel workbook with all of them.
+  employee, employee daily, late arrival, absence and missing check-out views. *Export Report*
+  downloads an Excel workbook with all of them. The **Employee Daily** report lists every day
+  of each employee (weekends and holidays included) with check-in and check-out, hours, how
+  late, distance from the office and any note; pick one employee for their register.
 - **Settings:** company details, logo and time zone; office location (drag the pin on an
   OpenStreetMap map or search for an address) with a geofence radius slider; working hours,
   grace period, workdays, tracking start date and holidays; departments; and the admin's own
   account and password.
+
+### Holidays
+
+Saturdays and Sundays are off by default (**Settings → Attendance Rules → Workdays**). On
+top of that, holidays are marked in both apps (a *Holiday* status, the holiday's name on the
+dashboard and in the employee app's week) and never counted as absences. Someone who works on
+a holiday is still recorded as present.
+
+**Settings → Attendance Rules → Holidays** adds the Indian government holidays in one click
+per year: the 17 gazetted holidays of Central Government offices (DoPT list for Delhi/New
+Delhi) for 2026 and 2027, from `backend/src/lib/holidayPresets.js`. New databases start with
+them. Remove any that don't apply, or add state and company holidays (e.g. Pongal) by date.
+Islamic festival dates can move with the moon sighting; adjust them if DoPT announces a change.
 
 The dashboard works on phones too: tables become stacked cards and dialogs open as bottom
 sheets.
@@ -116,7 +131,10 @@ stored in the database and served from `/api/branding/logo`.
 
 ### Excel import formats
 
-Download the template from the dashboard to get the exact headers. Headers are matched
+The templates (**Employees → ⋯ → Download import template**, or *Download the template* in
+either import dialog) are empty sheets: fill in the first sheet. Its cells are formatted as text so Excel keeps
+dates and times as typed, and drop-downs offer the departments, statuses and employee IDs.
+A second sheet, *How to fill*, explains the columns and shows an example row. Headers are matched
 loosely (e.g. "Employee ID", "Emp ID" or "ID"). Imports are all-or-nothing: if any row is
 invalid, nothing is saved and every problem is listed with its row number.
 
@@ -254,7 +272,8 @@ Attendance endpoints only ever return the signed-in employee's own records.
 | POST     | `/employees/status`                    | `{ ids, active }` bulk activate / deactivate            |
 | GET/POST | `/employees/export`, `/employees/template`, `/employees/import` | Excel export, template, import |
 | GET      | `/reports?from=&to=&department=&employee=` | Range statistics                                    |
-| GET      | `/reports/export?…&type=`              | Excel workbook                                          |
+| GET      | `/reports/daily?from=&to=&department=&employee=` | Employee daily rows (first 5,000; the export has all) |
+| GET      | `/reports/export?…&type=`              | Excel workbook (`summary`, `department`, `employee`, `daily`, `late`, `absent`, `not_checked_out`) |
 | GET/PUT  | `/settings`                            | Organisation settings                                   |
 
 ## Security and privacy

@@ -1,6 +1,7 @@
 import {
   Building2,
   CalendarCheck,
+  CalendarDays,
   ChartNoAxesColumn,
   ChevronRight,
   Clock,
@@ -20,7 +21,7 @@ import { useToast } from '../components/Toast.jsx';
 import { EmptyState, KpiCard, PageHead, SearchField, SelectField, Skeleton, StatusPill, TableSkeleton } from '../components/ui.jsx';
 import { useApi } from '../hooks/useApi.js';
 import { download, qs } from '../lib/api.js';
-import { addDays, formatDate, formatDuration, formatTime, monthStart } from '../lib/format.js';
+import { addDays, formatDate, formatDistance, formatDuration, formatLongDate, formatTime, monthStart } from '../lib/format.js';
 
 const PAGE_SIZE = 10;
 const share = (part, whole) => (whole ? Math.round((part / whole) * 100) : 0);
@@ -29,6 +30,7 @@ const REPORTS = [
   { type: 'summary', title: 'Attendance Summary', text: 'Overall attendance statistics', Icon: ChartNoAxesColumn, tone: 'green' },
   { type: 'department', title: 'Department Wise Report', text: 'Attendance by department', Icon: Building2, tone: 'blue' },
   { type: 'employee', title: 'Employee Wise Report', text: 'Detailed employee attendance', Icon: Users, tone: 'blue' },
+  { type: 'daily', title: 'Employee Daily Report', text: 'Each employee’s attendance day by day', Icon: CalendarDays, tone: 'green' },
   { type: 'late', title: 'Late Arrivals Report', text: 'Employees with late check-ins', Icon: Clock, tone: 'amber' },
   { type: 'absent', title: 'Absent Report', text: 'Employees who were absent', Icon: UserRound, tone: 'red' },
   { type: 'not_checked_out', title: 'Not Checked Out', text: 'Employees who didn’t check out', Icon: LogOut, tone: 'blue' },
@@ -44,6 +46,9 @@ export default function ReportsPage() {
   const [exporting, setExporting] = useState(false);
   const report = useApi(`/admin/reports${qs(applied)}`);
   const data = report.data && report.data.from === applied.from && report.data.to === applied.to ? report.data : null;
+  // Day-by-day rows are only fetched for the daily report.
+  const dailyReport = useApi(type === 'daily' ? `/admin/reports/daily${qs(applied)}` : null);
+  const daily = dailyReport.data && dailyReport.data.from === applied.from && dailyReport.data.to === applied.to ? dailyReport.data : null;
   const totals = data?.totals;
 
   const presets = [
@@ -202,7 +207,7 @@ export default function ReportsPage() {
           </div>
 
           <div className="grid-report">
-            <DetailedReport type={type} data={data} />
+            <DetailedReport type={type} data={data} daily={daily} />
             <section className="card report-options reveal" style={{ '--i': 8 }}>
               <h2 className="card__title">Report Options</h2>
               <ul>
@@ -245,8 +250,44 @@ function RateBar({ value }) {
   );
 }
 
+/** Where a check-in came from: the distance for app check-ins. */
+function locationText(record) {
+  if (!record) return '—';
+  if (record.source === 'import') return 'Imported';
+  if (record.source !== 'app') return 'Added by admin';
+  return formatDistance(record.checkInDistanceM) ?? '—';
+}
+
 /** Columns and rows of the detailed table for each report type. */
-function tableFor(type, data) {
+function tableFor(type, data, daily) {
+  if (type === 'daily') {
+    return {
+      columns: ['Date', 'Employee', 'Status', 'Check In', 'Check Out', 'Hours', 'Location'],
+      primary: 1,
+      rows: daily.rows.map((d) => ({
+        key: `${d.employee.id}|${d.date}`,
+        search: `${d.employee.name} ${d.employee.id} ${d.employee.department} ${d.holiday ?? ''}`,
+        cells: [
+          // A holiday someone worked on is tagged next to the date.
+          d.holiday && d.status !== 'holiday' ? (
+            <span key="d" className="report-date">
+              {formatLongDate(d.date)} <span className="tag tag--holiday">{d.holiday}</span>
+            </span>
+          ) : (
+            formatLongDate(d.date)
+          ),
+          <EmployeeCell key="e" employee={d.employee} />,
+          <StatusPill key="s" status={d.status}>
+            {d.status === 'holiday' ? d.holiday : d.minutesLate != null ? `Late · ${d.minutesLate}m` : undefined}
+          </StatusPill>,
+          formatTime(d.record?.checkInAt),
+          formatTime(d.record?.checkOutAt),
+          formatDuration(d.record?.workedMinutes),
+          locationText(d.record),
+        ],
+      })),
+    };
+  }
   if (type === 'department') {
     return {
       columns: ['Department', 'Expected Days', 'Present', 'On Time', 'Late', 'Absent', 'Attendance %'],
@@ -297,10 +338,10 @@ function tableFor(type, data) {
   };
 }
 
-function DetailedReport({ type, data }) {
+function DetailedReport({ type, data, daily }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const table = useMemo(() => (data ? tableFor(type, data) : null), [type, data]);
+  const table = useMemo(() => (data && (type !== 'daily' || daily) ? tableFor(type, data, daily) : null), [type, data, daily]);
   const filtered = table ? table.rows.filter((r) => !search || r.search.toLowerCase().includes(search.toLowerCase())) : [];
   const { current, rows } = paginate(filtered, page, PAGE_SIZE);
   const title = REPORTS.find((r) => r.type === type).title;
@@ -364,6 +405,11 @@ function DetailedReport({ type, data }) {
           </tbody>
         </table>
       </div>
+      {type === 'daily' && daily?.truncated && (
+        <p className="muted report-note">
+          Showing the first {daily.rows.length.toLocaleString()} of {daily.total.toLocaleString()} rows. Export the report for all of them.
+        </p>
+      )}
       {table && <Pagination page={current} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />}
     </section>
   );

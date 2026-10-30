@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { listEmployees } from '../../employees.js';
 import { buildDayRows, departmentBreakdown, recentActivity, summarizeDayRows } from '../../lib/adminStats.js';
+import { holidayOn } from '../../lib/attendance.js';
 import { addDays } from '../../lib/time.js';
 import { dateParam, loadRecords, officeNow, rowJson } from './common.js';
 
@@ -27,6 +28,7 @@ router.get('/', async (req, res) => {
   res.json({
     date,
     today,
+    holiday: holidayOn(date, schedule),
     kpis: summarizeDayRows(rows),
     trend,
     departments: departmentBreakdown(rows),

@@ -3,7 +3,7 @@ import { audit } from '../../audit.js';
 import { query, transaction } from '../../db.js';
 import { findEmployeeById, listEmployees, publicEmployee, saveEmployee, validateEmployee } from '../../employees.js';
 import { HttpError } from '../../errors.js';
-import { addTable, cellDate, cellText, newWorkbook, readUploadedSheet, sendWorkbook } from '../../lib/excel.js';
+import { addHowToSheet, addImportSheet, addTable, cellDate, cellText, newWorkbook, readUploadedSheet, sendWorkbook } from '../../lib/excel.js';
 import { saveSettings, storableSettings } from '../../settings.js';
 
 const router = Router();
@@ -95,29 +95,34 @@ router.get('/export', async (req, res) => {
   await sendWorkbook(res, workbook, 'employees.xlsx');
 });
 
+// An empty sheet to fill in; the example lives on the "How to fill" sheet.
 router.get('/template', async (req, res) => {
+  const columns = [...EXPORT_COLUMNS, { header: 'Password', key: 'password', width: 18 }];
   const workbook = newWorkbook();
-  addTable(workbook, 'Employees', [...EXPORT_COLUMNS, { header: 'Password', key: 'password', width: 18 }], [
-    {
-      id: 'EMP100',
-      name: 'Asha Menon',
-      email: 'asha.menon@company.com',
-      phone: '+91 90000 00000',
-      department: req.settings.departments[0] ?? 'Engineering',
-      designation: 'Software Engineer',
-      joinedOn: '2026-11-02',
-      status: 'Active',
-      password: 'Welcome@123',
-    },
-  ]);
-  const notes = workbook.addWorksheet('How to fill');
-  notes.columns = [{ width: 100 }];
-  [
-    'One row per employee. Existing Employee IDs are updated; new IDs are added.',
-    'Required: Employee ID, Name, Email, Joined On (YYYY-MM-DD). Password is required for new employees only.',
-    'Leave Password blank to keep an existing employee’s password unchanged.',
-    'Status: Active or Inactive. New departments are added to Settings automatically.',
-  ].forEach((line) => notes.addRow([line]));
+  addImportSheet(workbook, 'Employees', columns, { department: req.settings.departments, status: ['Active', 'Inactive'] });
+  addHowToSheet(
+    workbook,
+    [
+      'One row per employee. Existing Employee IDs are updated; new IDs are added.',
+      'Required: Employee ID, Name, Email, Joined On (YYYY-MM-DD). Password is required for new employees only.',
+      'Leave Password blank to keep an existing employee’s password unchanged.',
+      'Status: Active or Inactive. New departments are added to Settings automatically.',
+    ],
+    columns,
+    [
+      {
+        id: 'EMP100',
+        name: 'Asha Menon',
+        email: 'asha.menon@company.com',
+        phone: '+91 90000 00000',
+        department: req.settings.departments[0] ?? 'Engineering',
+        designation: 'Software Engineer',
+        joinedOn: '2026-11-02',
+        status: 'Active',
+        password: 'Welcome@123',
+      },
+    ],
+  );
   await sendWorkbook(res, workbook, 'employees-import-template.xlsx');
 });
 

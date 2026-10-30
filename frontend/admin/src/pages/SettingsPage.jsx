@@ -1,6 +1,7 @@
 import {
   Building2,
   CalendarDays,
+  Check,
   Clock,
   Globe,
   ImageUp,
@@ -85,7 +86,8 @@ export default function SettingsPage() {
     setError(null);
     try {
       const next = await api('/admin/settings', { method: 'PUT', body: { settings: draft } });
-      setSaved(next);
+      // The save response has no holiday presets or logo version; keep the loaded ones.
+      setSaved((prev) => ({ ...prev, ...next }));
       setDraft(next.settings);
       toast.success('Settings saved. The employee app uses them right away.');
     } catch (e) {
@@ -155,7 +157,7 @@ export default function SettingsPage() {
         <div key={tab} className="route-enter">
           {tab === 'general' && <GeneralTab draft={draft} update={update} error={error} />}
           {tab === 'office' && <OfficeTab draft={draft} update={update} error={error} />}
-          {tab === 'rules' && <RulesTab draft={draft} update={update} error={error} />}
+          {tab === 'rules' && <RulesTab draft={draft} update={update} error={error} presets={saved?.holidayPresets ?? []} />}
           {tab === 'departments' && <DepartmentsTab draft={draft} update={update} />}
           {saved?.updatedAt && (
             <p className="muted settings-meta">
@@ -396,9 +398,27 @@ function Slider({ label, value, min, max, step, unit, onChange, hint, error }) {
   );
 }
 
-function RulesTab({ draft, update, error }) {
+const weekdayName = (date) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()];
+
+/** Holidays grouped by year: [['2026', [...]], ...]. */
+function holidaysByYear(holidays) {
+  const years = new Map();
+  for (const h of holidays) years.set(h.date.slice(0, 4), [...(years.get(h.date.slice(0, 4)) ?? []), h]);
+  return [...years];
+}
+
+function RulesTab({ draft, update, error, presets }) {
   const { schedule } = draft;
+  const toast = useToast();
   const [holiday, setHoliday] = useState({ date: '', name: '' });
+  const holidayDates = new Set(schedule.holidays.map((h) => h.date));
+  const setHolidays = (list) => update('schedule', { holidays: [...list].sort((a, b) => a.date.localeCompare(b.date)) });
+
+  function addPreset(preset, year) {
+    const missing = preset.years[year].filter((h) => !holidayDates.has(h.date));
+    setHolidays([...schedule.holidays, ...missing]);
+    toast.success(`Added ${missing.length} holidays for ${year}. Save changes to apply them.`);
+  }
   const toggleDay = (d) =>
     update('schedule', {
       workdays: schedule.workdays.includes(d) ? schedule.workdays.filter((x) => x !== d) : [...schedule.workdays, d].sort(),
@@ -467,13 +487,31 @@ function RulesTab({ draft, update, error }) {
         </div>
       </Section>
 
-      <Section title="Holidays" subtitle="Company holidays are not counted as absences.">
+      <Section title="Holidays" subtitle="Holidays are not counted as absences. Weekends follow the workdays above.">
+        {presets.map((preset) => (
+          <div key={preset.id} className="holiday-preset">
+            <span className="holiday-preset__text">
+              <strong>{preset.name}</strong>
+              <span className="muted">{preset.source}</span>
+            </span>
+            <span className="holiday-preset__actions">
+              {Object.keys(preset.years).map((year) => {
+                const added = preset.years[year].every((h) => holidayDates.has(h.date));
+                return (
+                  <button key={year} type="button" className="btn btn--secondary btn--sm" disabled={added} onClick={() => addPreset(preset, year)}>
+                    {added ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />} {added ? `${year} added` : `Add ${year}`}
+                  </button>
+                );
+              })}
+            </span>
+          </div>
+        ))}
         <form
           className="holiday-form"
           onSubmit={(e) => {
             e.preventDefault();
             if (!holiday.date) return;
-            update('schedule', { holidays: [...schedule.holidays.filter((h) => h.date !== holiday.date), holiday].sort((a, b) => a.date.localeCompare(b.date)) });
+            setHolidays([...schedule.holidays.filter((h) => h.date !== holiday.date), holiday]);
             setHoliday({ date: '', name: '' });
           }}
         >
@@ -491,24 +529,32 @@ function RulesTab({ draft, update, error }) {
         {schedule.holidays.length === 0 ? (
           <p className="muted">No holidays added.</p>
         ) : (
-          <ul className="list-rows">
-            {schedule.holidays.map((h) => (
-              <li key={h.date}>
-                <span className="list-rows__main">
-                  <strong>{formatDate(h.date)}</strong>
-                  <span className="muted">{h.name || 'Holiday'}</span>
-                </span>
-                <button
-                  type="button"
-                  className="icon-btn icon-btn--danger"
-                  onClick={() => update('schedule', { holidays: schedule.holidays.filter((x) => x.date !== h.date) })}
-                  aria-label={`Remove holiday on ${formatDate(h.date)}`}
-                >
-                  <Trash2 aria-hidden="true" />
-                </button>
-              </li>
-            ))}
-          </ul>
+          holidaysByYear(schedule.holidays).map(([year, list]) => (
+            <div key={year} className="holiday-year">
+              <h3 className="holiday-year__title">
+                {year} <span className="muted">· {list.length} {list.length === 1 ? 'holiday' : 'holidays'}</span>
+              </h3>
+              <ul className="list-rows">
+                {list.map((h) => (
+                  <li key={h.date}>
+                    <span className="list-rows__main holiday-row">
+                      <strong>{formatDate(h.date)}</strong>
+                      <span className="holiday-row__day">{weekdayName(h.date)}</span>
+                      <span className="muted">{h.name || 'Holiday'}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--danger"
+                      onClick={() => setHolidays(schedule.holidays.filter((x) => x.date !== h.date))}
+                      aria-label={`Remove holiday on ${formatDate(h.date)}`}
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
         )}
       </Section>
     </>
