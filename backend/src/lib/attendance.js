@@ -2,7 +2,7 @@
 import { addDays, minDate, monthBounds, startOfWeek, weekdayOf, zonedClock } from './time.js';
 
 export function isWorkday(date, schedule) {
-  return schedule.workdays.includes(weekdayOf(date)) && !schedule.holidays.includes(date);
+  return schedule.workdays.includes(weekdayOf(date)) && !schedule.holidayDates.includes(date);
 }
 
 /** Late = checked in on a workday after workStart + grace period (to the second). */
@@ -25,6 +25,9 @@ export function serializeRecord(row) {
     checkInAccuracyM: row.check_in_accuracy_m,
     checkOutDistanceM: row.check_out_distance_m,
     checkOutAccuracyM: row.check_out_accuracy_m,
+    employeeId: row.employee_id,
+    source: row.source ?? 'app',
+    note: row.note ?? null,
   };
 }
 

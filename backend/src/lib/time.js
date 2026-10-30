@@ -49,6 +49,37 @@ export function parseTimeOfDay(value) {
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
+const CLOCK_RE = /^(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap]\.?m\.?)?$/i;
+
+/** Lenient clock parser for typed or imported times: '9:05', '09:05', '6:00 PM'. Minutes, or null. */
+export function parseClock(value) {
+  const match = CLOCK_RE.exec(String(value ?? '').trim());
+  if (!match) return null;
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const period = match[3]?.[0].toLowerCase();
+  if (period) {
+    if (hours < 1 || hours > 12) return null;
+    hours = (hours % 12) + (period === 'p' ? 12 : 0);
+  }
+  return hours < 24 && minutes < 60 ? hours * 60 + minutes : null;
+}
+
+/** The instant when the office clock in `timeZone` shows `minutes` past midnight on `date`. */
+export function zonedTimeToUtc(date, minutes, timeZone) {
+  const [year, month, day] = date.split('-').map(Number);
+  const wall = Date.UTC(year, month - 1, day, Math.floor(minutes / 60), minutes % 60);
+  const offsetAt = (instant) => {
+    const local = zonedClock(new Date(instant), timeZone);
+    const [y, m, d] = local.date.split('-').map(Number);
+    return Date.UTC(y, m - 1, d) + local.secondsOfDay * 1000 - instant;
+  };
+  // Two passes settle the offset even next to a daylight-saving change.
+  let instant = wall - offsetAt(wall);
+  instant = wall - offsetAt(instant);
+  return new Date(instant);
+}
+
 function toUtcDate(date) {
   const [year, month, day] = date.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day));

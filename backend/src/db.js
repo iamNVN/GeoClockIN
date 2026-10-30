@@ -1,19 +1,55 @@
 import pg from 'pg';
+import seed from '../config/geoclockin.config.js';
 import { HttpError } from './errors.js';
+import { normalizeSettings, storableSettings } from './lib/settingsSchema.js';
 
 const { Pool, types } = pg;
 
 // Keep DATE columns as 'YYYY-MM-DD' strings instead of local-midnight Date objects.
 types.setTypeParser(types.builtins.DATE, (value) => value);
 
+// Idempotent: safe to run on every cold start and on existing databases.
 const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS settings (
+  key         TEXT        PRIMARY KEY,
+  value       JSONB       NOT NULL,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS employees (
+  id              TEXT        PRIMARY KEY,
+  name            TEXT        NOT NULL,
+  email           TEXT        NOT NULL,
+  phone           TEXT        NOT NULL DEFAULT '',
+  department      TEXT        NOT NULL DEFAULT '',
+  designation     TEXT        NOT NULL DEFAULT '',
+  joined_on       DATE        NOT NULL,
+  active          BOOLEAN     NOT NULL DEFAULT TRUE,
+  deactivated_on  DATE,
+  password_hash   TEXT        NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS employees_email_key ON employees (lower(email));
+
+CREATE TABLE IF NOT EXISTS admins (
+  id             BIGSERIAL   PRIMARY KEY,
+  name           TEXT        NOT NULL,
+  email          TEXT        NOT NULL,
+  password_hash  TEXT        NOT NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS admins_email_key ON admins (lower(email));
+
 CREATE TABLE IF NOT EXISTS attendance (
   id                    BIGSERIAL   PRIMARY KEY,
   employee_id           TEXT        NOT NULL,
   work_date             DATE        NOT NULL,
   check_in_at           TIMESTAMPTZ NOT NULL,
-  check_in_distance_m   INTEGER     NOT NULL,
-  check_in_accuracy_m   INTEGER     NOT NULL,
+  check_in_distance_m   INTEGER,
+  check_in_accuracy_m   INTEGER,
   check_out_at          TIMESTAMPTZ,
   check_out_distance_m  INTEGER,
   check_out_accuracy_m  INTEGER,
@@ -23,6 +59,13 @@ CREATE TABLE IF NOT EXISTS attendance (
   CONSTRAINT attendance_one_per_day UNIQUE (employee_id, work_date),
   CONSTRAINT attendance_checkout_after_checkin CHECK (check_out_at IS NULL OR check_out_at >= check_in_at)
 );
+-- Records added or corrected by an admin (or imported) have no location reading.
+ALTER TABLE attendance ALTER COLUMN check_in_distance_m DROP NOT NULL;
+ALTER TABLE attendance ALTER COLUMN check_in_accuracy_m DROP NOT NULL;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'app';
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS note TEXT;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS updated_by TEXT;
+CREATE INDEX IF NOT EXISTS attendance_work_date_idx ON attendance (work_date);
 
 -- Every check-in / check-out attempt, accepted or rejected, for auditing.
 -- Only the distance from the office and the reading's accuracy are kept,
@@ -36,9 +79,19 @@ CREATE TABLE IF NOT EXISTS attendance_attempts (
   accuracy_m   INTEGER,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
 CREATE INDEX IF NOT EXISTS attendance_attempts_employee_idx
   ON attendance_attempts (employee_id, created_at DESC);
+
+-- Administrative changes: employees, settings and attendance corrections.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id          BIGSERIAL   PRIMARY KEY,
+  actor       TEXT        NOT NULL,
+  action      TEXT        NOT NULL,
+  entity      TEXT        NOT NULL,
+  entity_id   TEXT,
+  details     JSONB,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;
 
 // Arbitrary constant identifying the schema-migration advisory lock.
@@ -63,38 +116,71 @@ function getPool() {
   return pool;
 }
 
+/** First run only: organisation settings, employees and admins from config/geoclockin.config.js. */
+async function seedIfEmpty(client) {
+  await client.query(
+    `INSERT INTO settings (key, value, updated_by) VALUES ('organization', $1, 'seed') ON CONFLICT (key) DO NOTHING`,
+    [JSON.stringify(storableSettings(normalizeSettings(seed)))],
+  );
+
+  const { rows: [{ count: employeeCount }] } = await client.query('SELECT count(*)::int AS count FROM employees');
+  if (employeeCount === 0) {
+    for (const e of seed.employees ?? []) {
+      await client.query(
+        `INSERT INTO employees (id, name, email, phone, department, designation, joined_on, active, password_hash)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [e.id.toUpperCase(), e.name, e.email.toLowerCase(), e.phone ?? '', e.department ?? '', e.designation ?? '', e.joinedOn, e.active !== false, e.passwordHash],
+      );
+    }
+  }
+
+  const { rows: [{ count: adminCount }] } = await client.query('SELECT count(*)::int AS count FROM admins');
+  if (adminCount === 0) {
+    for (const a of seed.admins ?? []) {
+      await client.query('INSERT INTO admins (name, email, password_hash) VALUES ($1, $2, $3)', [a.name, a.email.toLowerCase(), a.passwordHash]);
+    }
+  }
+}
+
 let schemaReady;
 
 /**
- * Creates tables if they don't exist. Runs once per process (i.e. per
- * serverless cold start); the advisory lock serialises concurrent cold starts.
+ * Creates or migrates tables and seeds an empty database. Runs once per
+ * process (i.e. per serverless cold start); the advisory lock serialises
+ * concurrent cold starts.
  */
 export function ensureSchema() {
-  schemaReady ??= applySchema().catch((err) => {
+  schemaReady ??= transaction(async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock($1)', [SCHEMA_LOCK_ID]);
+    await client.query(SCHEMA_SQL);
+    await seedIfEmpty(client);
+  }, { skipSchema: true }).catch((err) => {
     schemaReady = undefined;
     throw err;
   });
   return schemaReady;
 }
 
-async function applySchema() {
+export async function query(text, params) {
+  await ensureSchema();
+  return getPool().query(text, params);
+}
+
+/** Runs `fn(client)` inside a transaction. */
+export async function transaction(fn, { skipSchema = false } = {}) {
+  if (!skipSchema) await ensureSchema();
   const client = await getPool().connect();
   try {
     await client.query('BEGIN');
-    await client.query('SELECT pg_advisory_xact_lock($1)', [SCHEMA_LOCK_ID]);
-    await client.query(SCHEMA_SQL);
+    const result = await fn(client);
     await client.query('COMMIT');
+    return result;
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     throw err;
   } finally {
     client.release();
   }
-}
-
-export async function query(text, params) {
-  await ensureSchema();
-  return getPool().query(text, params);
 }
 
 export async function closePool() {

@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { requireAuth } from '../auth.js';
-import { attendanceStartDate, config } from '../config.js';
 import { query } from '../db.js';
 import { HttpError } from '../errors.js';
 import {
@@ -14,19 +13,24 @@ import {
 } from '../lib/attendance.js';
 import { parseCoordinates, verifyLocation } from '../lib/geo.js';
 import { addDays, minDate, monthBounds, startOfWeek, zonedClock } from '../lib/time.js';
+import { attendanceStartDate, getSettings } from '../settings.js';
 
-const { schedule } = config;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const router = Router();
 router.use(requireAuth);
+// Office, geofence and schedule as currently configured by the admin.
+router.use(async (req, res, next) => {
+  req.settings = await getSettings();
+  next();
+});
 
-const now = () => {
+const now = (settings) => {
   const instant = new Date();
-  return { instant, ...zonedClock(instant, schedule.timezone) };
+  return { instant, ...zonedClock(instant, settings.schedule.timezone) };
 };
 
-const verify = (coords) => verifyLocation(coords, config.office, config.location.maxAccuracyMeters);
+const verify = (coords, settings) => verifyLocation(coords, settings.office, settings.location.maxAccuracyMeters);
 
 async function findRecord(employeeId, date) {
   const { rows } = await query('SELECT * FROM attendance WHERE employee_id = $1 AND work_date = $2', [employeeId, date]);
@@ -41,8 +45,8 @@ async function logAttempt(employeeId, action, outcome, verification) {
 }
 
 /** Rejects with 422 when the reported location fails the geofence policy. */
-async function requireVerifiedLocation(employeeId, action, coords) {
-  const verification = verify(coords);
+async function requireVerifiedLocation(employeeId, action, coords, settings) {
+  const verification = verify(coords, settings);
   if (!verification.ok) {
     await logAttempt(employeeId, action, verification.code.toLowerCase(), verification);
     throw new HttpError(422, `LOCATION_${verification.code}`, verification.message, { verification });
@@ -56,15 +60,16 @@ async function rejectSequence(employeeId, action, code, message) {
 }
 
 router.get('/today', async (req, res) => {
-  const { instant, date } = now();
+  const { instant, date } = now(req.settings);
   const record = serializeRecord(await findRecord(req.employee.id, date));
-  res.json({ serverTime: instant.toISOString(), ...todayState(date, record, schedule) });
+  res.json({ serverTime: instant.toISOString(), ...todayState(date, record, req.settings.schedule) });
 });
 
 // Everything the home screen shows, in one request: today's status, this
 // week, this month's summary and the most recent attendance days.
 router.get('/overview', async (req, res) => {
-  const { instant, date: today, secondsOfDay } = now();
+  const { schedule } = req.settings;
+  const { instant, date: today, secondsOfDay } = now(req.settings);
   const month = today.slice(0, 7);
   const weekStart = startOfWeek(today);
   const recentStart = addDays(today, -13);
@@ -75,7 +80,8 @@ router.get('/overview', async (req, res) => {
     [req.employee.id, from, addDays(weekStart, 6)],
   );
   const records = rows.map(serializeRecord);
-  const context = { records, today, secondsOfDay, startDate: attendanceStartDate(req.employee), schedule };
+  const startDate = attendanceStartDate(req.employee, req.settings);
+  const context = { records, today, secondsOfDay, startDate, schedule };
 
   res.json({
     serverTime: instant.toISOString(),
@@ -89,18 +95,18 @@ router.get('/overview', async (req, res) => {
 // Lets the app show "Location Verified" before the employee confirms.
 // Nothing is stored; check-in / check-out re-verify independently.
 router.post('/verify-location', (req, res) => {
-  res.json({ verification: verify(parseCoordinates(req.body)) });
+  res.json({ verification: verify(parseCoordinates(req.body), req.settings) });
 });
 
 router.post('/check-in', async (req, res) => {
   const coords = parseCoordinates(req.body);
-  const { instant, date, secondsOfDay } = now();
+  const { instant, date, secondsOfDay } = now(req.settings);
   const employeeId = req.employee.id;
 
   if (await findRecord(employeeId, date)) {
     await rejectSequence(employeeId, 'check_in', 'ALREADY_CHECKED_IN', 'You have already clocked in today.');
   }
-  const verification = await requireVerifiedLocation(employeeId, 'check_in', coords);
+  const verification = await requireVerifiedLocation(employeeId, 'check_in', coords, req.settings);
 
   // The unique (employee_id, work_date) constraint makes concurrent duplicate
   // check-ins a no-op rather than a second record.
@@ -109,7 +115,14 @@ router.post('/check-in', async (req, res) => {
      VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (employee_id, work_date) DO NOTHING
      RETURNING *`,
-    [employeeId, date, instant, verification.distanceM, verification.accuracyM, isLateCheckIn(date, secondsOfDay, schedule)],
+    [
+      employeeId,
+      date,
+      instant,
+      verification.distanceM,
+      verification.accuracyM,
+      isLateCheckIn(date, secondsOfDay, req.settings.schedule),
+    ],
   );
   if (!rows[0]) {
     await rejectSequence(employeeId, 'check_in', 'ALREADY_CHECKED_IN', 'You have already clocked in today.');
@@ -121,7 +134,7 @@ router.post('/check-in', async (req, res) => {
 
 router.post('/check-out', async (req, res) => {
   const coords = parseCoordinates(req.body);
-  const { instant, date } = now();
+  const { instant, date } = now(req.settings);
   const employeeId = req.employee.id;
 
   const existing = await findRecord(employeeId, date);
@@ -131,7 +144,7 @@ router.post('/check-out', async (req, res) => {
   if (existing.check_out_at) {
     await rejectSequence(employeeId, 'check_out', 'ALREADY_CHECKED_OUT', 'You have already clocked out today.');
   }
-  const verification = await requireVerifiedLocation(employeeId, 'check_out', coords);
+  const verification = await requireVerifiedLocation(employeeId, 'check_out', coords, req.settings);
 
   const { rows } = await query(
     `UPDATE attendance
@@ -150,7 +163,8 @@ router.post('/check-out', async (req, res) => {
 
 // Only ever returns the signed-in employee's own records.
 router.get('/history', async (req, res) => {
-  const { date: today, secondsOfDay } = now();
+  const { schedule } = req.settings;
+  const { date: today, secondsOfDay } = now(req.settings);
   const month = req.query.month ?? today.slice(0, 7);
   if (typeof month !== 'string' || !MONTH_RE.test(month)) {
     throw new HttpError(400, 'INVALID_MONTH', 'Month must be in YYYY-MM format.');
@@ -166,7 +180,7 @@ router.get('/history', async (req, res) => {
     records: rows.map(serializeRecord),
     today,
     secondsOfDay,
-    startDate: attendanceStartDate(req.employee),
+    startDate: attendanceStartDate(req.employee, req.settings),
     schedule,
   });
 

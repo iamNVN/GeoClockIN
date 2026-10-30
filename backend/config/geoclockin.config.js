@@ -1,19 +1,22 @@
 /**
- * GeoClockIN configuration (Phase 1).
+ * GeoClockIN initial data.
  *
- * Until the admin dashboard exists, the office, geofence, work schedule and
- * employee accounts are maintained here. Changes take effect on the next
- * deploy / server restart.
+ * Used once, to seed an empty database: the organisation settings, the first
+ * employees and the first admin account. After that, everything here is
+ * managed from the admin dashboard (/admin) and stored in the database —
+ * editing this file does not change an existing installation.
  */
 export default {
   company: {
     name: 'ABC Technologies',
+    email: 'hr@abctech.com',
+    phone: '+91 98765 43200',
+    address: '123 Business Rd, Chennai, Tamil Nadu',
   },
 
   office: {
     name: 'ABC Tech Park',
     address: '123 Business Rd, Chennai, Tamil Nadu',
-    // Replace with the approved office coordinates (decimal degrees).
     latitude: 12.9894,
     longitude: 80.2486,
     // Attendance is accepted only within this distance of the coordinates above.
@@ -21,8 +24,7 @@ export default {
   },
 
   location: {
-    // Readings less precise than this are rejected ("poor accuracy"). Indoor
-    // GPS is commonly 10–50 m; desktop Wi-Fi positioning can be far worse.
+    // Readings less precise than this are rejected ("poor accuracy").
     maxAccuracyMeters: 100,
   },
 
@@ -35,15 +37,24 @@ export default {
     graceMinutes: 15,
     // 0 = Sunday … 6 = Saturday.
     workdays: [1, 2, 3, 4, 5],
-    // Company holidays (YYYY-MM-DD). Not counted as absences.
+    // Company holidays. Not counted as absences.
     holidays: [],
     // Absences are only counted from this date (system go-live) or the
     // employee's joining date, whichever is later.
     trackingStartDate: '2026-10-01',
   },
 
+  departments: ['Engineering', 'Design', 'Quality Assurance', 'Human Resources', 'Operations'],
+
   // Generate a password hash with: npm run hash-password -- "<password>"
-  // Inactive employees cannot sign in.
+  admins: [
+    {
+      name: 'Admin',
+      email: 'admin@abctech.com',
+      passwordHash: '$2b$10$6dTUf/dAIamYawjCb5VZuO59L3a1hFGrGfwV.dpQQURTHwb1ZxOsK',
+    },
+  ],
+
   employees: [
     {
       id: 'EMP001',

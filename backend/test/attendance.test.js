@@ -13,7 +13,7 @@ import {
 const TZ = 'Asia/Kolkata';
 const schedule = {
   workdays: [1, 2, 3, 4, 5],
-  holidays: ['2026-10-02'],
+  holidayDates: ['2026-10-02'],
   workStartMinutes: 9 * 60,
   workEndMinutes: 18 * 60,
   graceMinutes: 15,

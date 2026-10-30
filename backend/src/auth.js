@@ -1,8 +1,11 @@
 import jwt from 'jsonwebtoken';
-import { findEmployeeById } from './config.js';
+import { findAdminById } from './admins.js';
+import { findEmployeeById } from './employees.js';
 import { HttpError } from './errors.js';
 
-const COOKIE_NAME = 'gci_session';
+// Employees and admins have separate cookies, so one browser can be signed in
+// to the employee app and the admin dashboard at the same time.
+const COOKIES = { employee: 'gci_session', admin: 'gci_admin' };
 const SESSION_SECONDS = 12 * 60 * 60;
 const REMEMBER_ME_SECONDS = 30 * 24 * 60 * 60;
 const isProduction = process.env.NODE_ENV === 'production';
@@ -30,36 +33,53 @@ const cookieOptions = {
 };
 
 /**
- * Signs the employee in. "Remember me" keeps a persistent cookie for 30 days;
- * otherwise the cookie lasts for the browser session (and at most 12 hours).
+ * Signs in an employee or admin. "Remember me" keeps a persistent cookie for
+ * 30 days; otherwise the cookie lasts for the browser session (at most 12 h).
  */
-export function startSession(res, employeeId, rememberMe) {
+export function startSession(res, role, subject, rememberMe) {
   const lifetime = rememberMe ? REMEMBER_ME_SECONDS : SESSION_SECONDS;
-  const token = jwt.sign({ sub: employeeId }, jwtSecret(), { algorithm: 'HS256', expiresIn: lifetime });
-  res.cookie(COOKIE_NAME, token, rememberMe ? { ...cookieOptions, maxAge: lifetime * 1000 } : cookieOptions);
+  const token = jwt.sign({ sub: subject, role }, jwtSecret(), { algorithm: 'HS256', expiresIn: lifetime });
+  res.cookie(COOKIES[role], token, rememberMe ? { ...cookieOptions, maxAge: lifetime * 1000 } : cookieOptions);
 }
 
-export function endSession(res) {
-  res.clearCookie(COOKIE_NAME, cookieOptions);
+export function endSession(res, role) {
+  res.clearCookie(COOKIES[role], cookieOptions);
+}
+
+/** The session subject for `role`, or null. Employee tokens from before roles existed have no role claim. */
+function sessionSubject(req, role) {
+  const token = req.cookies?.[COOKIES[role]];
+  if (!token) return { token: null, subject: null };
+  try {
+    const payload = jwt.verify(token, jwtSecret(), { algorithms: ['HS256'] });
+    const tokenRole = payload.role ?? 'employee';
+    return { token, subject: tokenRole === role ? payload.sub : null };
+  } catch (err) {
+    if (err instanceof HttpError) throw err;
+    return { token, subject: null };
+  }
+}
+
+function unauthenticated(res, role, hadToken) {
+  if (!hadToken) return new HttpError(401, 'UNAUTHENTICATED', 'Please sign in to continue.');
+  endSession(res, role);
+  return new HttpError(401, 'UNAUTHENTICATED', 'Your session has expired. Please sign in again.');
 }
 
 /** Attaches the signed-in, active employee to `req.employee` or responds 401. */
-export function requireAuth(req, res, next) {
-  const token = req.cookies?.[COOKIE_NAME];
-  let employee;
-  if (token) {
-    try {
-      const { sub } = jwt.verify(token, jwtSecret(), { algorithms: ['HS256'] });
-      employee = findEmployeeById(sub);
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-    }
-  }
-  if (!employee?.active) {
-    if (!token) throw new HttpError(401, 'UNAUTHENTICATED', 'Please sign in to continue.');
-    endSession(res);
-    throw new HttpError(401, 'UNAUTHENTICATED', 'Your session has expired. Please sign in again.');
-  }
+export async function requireAuth(req, res, next) {
+  const { token, subject } = sessionSubject(req, 'employee');
+  const employee = subject ? await findEmployeeById(subject) : null;
+  if (!employee?.active) throw unauthenticated(res, 'employee', Boolean(token));
   req.employee = employee;
+  next();
+}
+
+/** Attaches the signed-in admin to `req.admin` or responds 401. */
+export async function requireAdmin(req, res, next) {
+  const { token, subject } = sessionSubject(req, 'admin');
+  const admin = subject ? await findAdminById(subject) : null;
+  if (!admin) throw unauthenticated(res, 'admin', Boolean(token));
+  req.admin = admin;
   next();
 }
