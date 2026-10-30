@@ -1,6 +1,7 @@
 // Organisation settings (company, office geofence, schedule, departments),
 // stored in the database and edited from the admin dashboard.
 import { query } from './db.js';
+import { MAX_ACCURACY_METERS } from './lib/geo.js';
 import { normalizeSettings, storableSettings } from './lib/settingsSchema.js';
 import { maxDate } from './lib/time.js';
 
@@ -37,7 +38,7 @@ export function attendanceStartDate(employee, settings) {
 
 /** Everything the employee app needs about the signed-in user and their office. */
 export function sessionPayload(employee, settings) {
-  const { schedule, office, company, location } = settings;
+  const { schedule, office, company } = settings;
   return {
     employee: {
       id: employee.id,
@@ -54,7 +55,7 @@ export function sessionPayload(employee, settings) {
       name: office.name,
       address: office.address,
       radiusMeters: office.radiusMeters,
-      maxAccuracyMeters: location.maxAccuracyMeters,
+      maxAccuracyMeters: MAX_ACCURACY_METERS,
     },
     schedule: {
       timezone: schedule.timezone,

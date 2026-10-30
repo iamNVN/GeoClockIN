@@ -23,11 +23,6 @@ export default {
     radiusMeters: 150,
   },
 
-  location: {
-    // Readings less precise than this are rejected ("poor accuracy").
-    maxAccuracyMeters: 100,
-  },
-
   schedule: {
     // IANA time zone used for work dates, late status and all reported times.
     timezone: 'Asia/Kolkata',

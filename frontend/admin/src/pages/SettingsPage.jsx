@@ -33,7 +33,7 @@ const TABS = [
 
 /** Which tab a server-side validation field belongs to. */
 const tabForField = (field = '') =>
-  field.startsWith('office') || field.startsWith('location')
+  field.startsWith('office')
     ? 'office'
     : field.startsWith('schedule')
       ? 'rules'
@@ -232,7 +232,7 @@ function GeneralTab({ draft, update, error }) {
 }
 
 function OfficeTab({ draft, update, error }) {
-  const { office, location } = draft;
+  const { office } = draft;
   return (
     <div className="office-layout">
       <Section title="Office Location" subtitle="Employees can only clock in and out inside this geofence.">
@@ -281,17 +281,6 @@ function OfficeTab({ draft, update, error }) {
               onChange={(v) => update('office', { radiusMeters: v })}
               hint="Employees must be within this distance of the pin."
               error={errorFor(error, 'office.radiusMeters')}
-            />
-            <Slider
-              label="Location Accuracy Limit"
-              value={location.maxAccuracyMeters}
-              min={10}
-              max={500}
-              step={5}
-              unit="m"
-              onChange={(v) => update('location', { maxAccuracyMeters: v })}
-              hint="Readings less precise than this are rejected as a weak signal."
-              error={errorFor(error, 'location.maxAccuracyMeters')}
             />
           </div>
         </Section>

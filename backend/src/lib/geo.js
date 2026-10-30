@@ -1,6 +1,11 @@
 import { HttpError } from '../errors.js';
 
 const EARTH_RADIUS_M = 6_371_008.8;
+
+// Readings less precise than this are rejected. Phones indoors usually report
+// ±10–50 m; 100 m tolerates a weak signal without letting a vague fix pass.
+export const MAX_ACCURACY_METERS = 100;
+
 const toRadians = (degrees) => (degrees * Math.PI) / 180;
 
 /** Great-circle (haversine) distance in meters between two { latitude, longitude } points. */
@@ -41,7 +46,7 @@ export function parseCoordinates(body) {
  * outside the radius, the result is "outside" rather than "poor accuracy",
  * because a more precise reading would not change the outcome.
  */
-export function verifyLocation(coords, office, maxAccuracyMeters) {
+export function verifyLocation(coords, office, maxAccuracyMeters = MAX_ACCURACY_METERS) {
   const distance = distanceMeters(coords, office);
   const result = {
     distanceM: Math.round(distance),

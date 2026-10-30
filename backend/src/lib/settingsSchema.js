@@ -37,7 +37,6 @@ const LABELS = {
   'office.latitude': 'Latitude',
   'office.longitude': 'Longitude',
   'office.radiusMeters': 'Geofence radius',
-  'location.maxAccuracyMeters': 'Location accuracy limit',
   'schedule.timezone': 'Time zone',
   'schedule.workStart': 'Work start time',
   'schedule.workEnd': 'Work end time',
@@ -52,7 +51,7 @@ const label = (field) => LABELS[field] ?? field;
  * HttpError naming the offending field.
  */
 export function normalizeSettings(raw = {}) {
-  const { company = {}, office = {}, location = {}, schedule = {}, departments = [] } = raw;
+  const { company = {}, office = {}, schedule = {}, departments = [] } = raw;
 
   const workStartMinutes = time(schedule.workStart, 'schedule.workStart');
   const workEndMinutes = time(schedule.workEnd, 'schedule.workEnd');
@@ -96,9 +95,6 @@ export function normalizeSettings(raw = {}) {
       latitude: number(office.latitude, 'office.latitude', { min: -90, max: 90 }),
       longitude: number(office.longitude, 'office.longitude', { min: -180, max: 180 }),
       radiusMeters: number(office.radiusMeters, 'office.radiusMeters', { min: 10, max: 5000, integer: true }),
-    },
-    location: {
-      maxAccuracyMeters: number(location.maxAccuracyMeters, 'location.maxAccuracyMeters', { min: 5, max: 1000, integer: true }),
     },
     schedule: {
       timezone: schedule.timezone,

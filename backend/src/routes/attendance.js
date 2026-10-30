@@ -30,7 +30,7 @@ const now = (settings) => {
   return { instant, ...zonedClock(instant, settings.schedule.timezone) };
 };
 
-const verify = (coords, settings) => verifyLocation(coords, settings.office, settings.location.maxAccuracyMeters);
+const verify = (coords, settings) => verifyLocation(coords, settings.office);
 
 async function findRecord(employeeId, date) {
   const { rows } = await query('SELECT * FROM attendance WHERE employee_id = $1 AND work_date = $2', [employeeId, date]);
