@@ -6,16 +6,18 @@
   "type": "module",
   "workspaces": [
     "backend",
-    "frontend/employee"
+    "frontend/employee",
+    "frontend/admin"
   ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "dev": "concurrently -k -n api,web -c green,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "dev": "concurrently -k -n api,web,admin -c green,cyan,magenta \"npm:dev:api\" \"npm:dev:web\" \"npm:dev:admin\"",
     "dev:api": "npm run dev -w backend",
     "dev:web": "npm run dev -w frontend/employee",
-    "build": "npm run build -w frontend/employee",
+    "dev:admin": "npm run dev -w frontend/admin",
+    "build": "npm run build -w frontend/employee && npm run build -w frontend/admin",
     "test": "npm test -w backend",
     "db:migrate": "npm run db:migrate -w backend",
     "hash-password": "npm run hash-password -w backend --"
