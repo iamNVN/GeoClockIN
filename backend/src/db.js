@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import pg from 'pg';
 import seed from '../config/geoclockin.config.js';
 import { HttpError } from './errors.js';
@@ -136,7 +137,12 @@ async function seedIfEmpty(client) {
 
   const { rows: [{ count: adminCount }] } = await client.query('SELECT count(*)::int AS count FROM admins');
   if (adminCount === 0) {
-    for (const a of seed.admins ?? []) {
+    // ADMIN_EMAIL / ADMIN_PASSWORD (if set) replace the demo admin, so a
+    // deployment never starts with the published demo password.
+    const admins = process.env.ADMIN_PASSWORD
+      ? [{ name: 'Admin', email: process.env.ADMIN_EMAIL ?? seed.admins[0].email, passwordHash: await bcrypt.hash(process.env.ADMIN_PASSWORD, 10) }]
+      : seed.admins ?? [];
+    for (const a of admins) {
       await client.query('INSERT INTO admins (name, email, password_hash) VALUES ($1, $2, $3)', [a.name, a.email.toLowerCase(), a.passwordHash]);
     }
   }
