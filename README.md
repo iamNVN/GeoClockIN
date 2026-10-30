@@ -168,8 +168,8 @@ have separate cookies.
   geofence policy:
   - If even the nearest edge of the accuracy circle is outside the radius → *outside the
     office area*.
-  - Else, if the reported accuracy is worse than the accuracy limit → *weak signal*
-    (move near a window and retry).
+  - Else, if the reported accuracy is worse than ±100 m → *weak signal* (move near a window
+    and retry). The limit is fixed in `backend/src/lib/geo.js`.
   - Else, if the reported point is outside the radius → *outside the office area*.
   - Otherwise → accepted.
 - **Late:** a workday check-in after work start + grace period (to the second). Late status
