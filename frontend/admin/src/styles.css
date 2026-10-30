@@ -2494,6 +2494,67 @@ input[type='checkbox'] {
   font-weight: 600;
 }
 
+.auth__back {
+  justify-self: center;
+  font-size: 13.5px;
+}
+
+.auth__back svg {
+  width: 15px;
+  height: 15px;
+}
+
+.auth__status {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+.auth__status .auth__card-sub {
+  margin-top: -4px;
+  line-height: 1.55;
+}
+
+.auth__status .auth__card-sub strong {
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.auth__status-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.auth__status-icon--amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.auth__status-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.auth__checking {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 0;
+  color: var(--muted);
+}
+
+.auth__checking svg {
+  width: 18px;
+  height: 18px;
+  color: var(--brand);
+}
+
 /* ==========================================================================
    Responsive
    ========================================================================== */

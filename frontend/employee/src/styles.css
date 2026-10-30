@@ -506,6 +506,7 @@ svg {
   color: var(--brand);
   font-size: 13px;
   font-weight: 600;
+  text-decoration: none;
 }
 
 .link-button:hover {
@@ -1022,6 +1023,71 @@ svg {
 .login__footer svg {
   width: 16px;
   height: 16px;
+  color: var(--brand);
+}
+
+.login__back {
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  gap: 6px;
+}
+
+.login__back svg {
+  width: 15px;
+  height: 15px;
+}
+
+.login__status {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.login__status .login__subtitle {
+  line-height: 1.55;
+}
+
+.login__status .login__subtitle strong {
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.login__status-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.login__status-icon--amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.login__status-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.login__checking {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.login__checking svg {
+  width: 18px;
+  height: 18px;
   color: var(--brand);
 }
 

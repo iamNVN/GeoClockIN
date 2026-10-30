@@ -21,13 +21,14 @@ function toEmployee(row) {
     active: row.active,
     deactivatedOn: row.deactivated_on,
     passwordHash: row.password_hash,
+    passwordChangedAt: row.password_changed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 /** Employee without credentials, for API responses. */
-export function publicEmployee({ passwordHash, ...employee }) {
+export function publicEmployee({ passwordHash, passwordChangedAt, ...employee }) {
   return employee;
 }
 

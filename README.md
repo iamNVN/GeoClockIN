@@ -143,8 +143,28 @@ Environment variables (`backend/.env` locally, Project Settings → Environment 
 | `DATABASE_URL`   | yes               | PostgreSQL connection string                                       |
 | `JWT_SECRET`     | yes in production | Long random string used to sign session cookies                    |
 | `ADMIN_EMAIL`    | no                | Email of the first admin when the database is created              |
-| `ADMIN_PASSWORD` | recommended       | Password of the first admin (replaces the demo `Admin@123`)        |
+| `ADMIN_PASSWORD` | yes on Vercel     | Password of the first admin (replaces the demo `Admin@123`)        |
+| `SMTP_HOST`      | for password reset | SMTP server for reset emails, e.g. `smtp.gmail.com`               |
+| `SMTP_PORT`      | no                | `465` (TLS) or `587` (STARTTLS, the default)                       |
+| `SMTP_USER`, `SMTP_PASS` | for password reset | SMTP login (for Gmail, an [app password](https://myaccount.google.com/apppasswords)) |
+| `MAIL_FROM`      | no                | Sender, e.g. `GeoClockIN <no-reply@yourcompany.com>` (default `SMTP_USER`) |
+| `APP_URL`        | no                | Public address used in reset links (default: the Vercel production domain) |
 | `PORT`           | no                | Local API port (default `3001`)                                    |
+
+### Password reset emails
+
+"Forgot password?" in both apps emails a one-time link that expires after 30 minutes. Any
+SMTP provider works:
+
+| Provider | `SMTP_HOST`            | `SMTP_PORT` | `SMTP_USER`                    | `SMTP_PASS`             |
+| -------- | ---------------------- | ----------- | ------------------------------ | ----------------------- |
+| Gmail    | `smtp.gmail.com`       | `465`       | your Gmail address             | a Google app password   |
+| Brevo    | `smtp-relay.brevo.com` | `587`       | the SMTP login from Brevo      | the Brevo SMTP key      |
+| Resend   | `smtp.resend.com`      | `465`       | `resend`                       | a Resend API key        |
+
+Locally, without `SMTP_HOST`, the API prints the email (and its link) to the terminal instead
+of sending it. On Vercel, without `SMTP_HOST`, "Forgot password?" explains that reset by
+email isn't set up and nothing is sent.
 
 ## Deploying to Vercel
 
@@ -160,7 +180,8 @@ Environment variables (`backend/.env` locally, Project Settings → Environment 
    Deployments never use the published demo password: until `ADMIN_PASSWORD` is set (and the
    project redeployed) nobody can sign in to `/admin`. If the database already has an admin,
    change its password in **Settings → Account & Security** instead.
-5. Deploy. Tables are created or migrated automatically on the first request. Check
+5. For "Forgot password?", add the `SMTP_*` variables (see [Password reset emails](#password-reset-emails)).
+6. Deploy. Tables are created or migrated automatically on the first request. Check
    `https://<your-app>.vercel.app/api/health`; it should return `{"status":"ok","database":"ok"}`.
 
 The apps and the API are served from the same domain, so session cookies are first-party
@@ -203,6 +224,9 @@ All endpoints are under `/api` and return JSON. Errors look like
 | POST   | `/auth/login`                      | `{ identifier, password, rememberMe }`. Sets the session cookie  |
 | POST   | `/auth/logout`                     | Clears the session cookie                                        |
 | GET    | `/auth/me`                         | Signed-in employee, office and schedule                          |
+| POST   | `/auth/forgot-password`            | `{ identifier }`. Emails a reset link; same answer for unknown accounts |
+| POST   | `/auth/reset-password/check`       | `{ token }` → `{ valid }`                                        |
+| POST   | `/auth/reset-password`             | `{ token, password }`. Sets the password and ends all sessions   |
 | GET    | `/attendance/overview`             | Today, this week, this month and recent days (home screen)       |
 | GET    | `/attendance/today`                | Today's record, status and allowed next action                   |
 | POST   | `/attendance/verify-location`      | `{ latitude, longitude, accuracy }`. Geofence check only, nothing is stored |
@@ -219,6 +243,7 @@ Attendance endpoints only ever return the signed-in employee's own records.
 | POST     | `/auth/login`, `/auth/logout`          | `{ email, password, rememberMe }`                       |
 | GET      | `/auth/me`                             | Signed-in admin and organisation                        |
 | PUT      | `/auth/account`                        | Change name, email or password (current password required) |
+| POST     | `/auth/forgot-password`, `/auth/reset-password/check`, `/auth/reset-password` | As for employees, with `{ email }`; no session needed |
 | GET      | `/overview?date=`                      | KPIs, 7-day trend, departments, recent activity         |
 | GET      | `/attendance?date=`                    | Every employee's status for a day                       |
 | PUT      | `/attendance/:employeeId/:date`        | `{ checkIn, checkOut, note }`; `checkIn: null` marks absent |
@@ -239,6 +264,11 @@ Attendance endpoints only ever return the signed-in employee's own records.
 - Sessions are signed JWTs in `HttpOnly`, `Secure`, `SameSite=Strict` cookies: 12 hours, or
   30 days with *Remember me*. Employee and admin sessions are separate; neither can call the
   other's API.
+- **Password reset links** carry a random 256-bit token in the URL fragment (never sent to the
+  server in logs or `Referer` headers). Only its SHA-256 hash is stored; a link works once,
+  expires after 30 minutes, and a newer link replaces older ones. An account gets at most one
+  email a minute and five an hour, and the reply is the same whether or not the account
+  exists. A reset signs the account out on every device.
 - The browser never decides anything about attendance. Sequence rules, the geofence and all
   timestamps are enforced on the server.
 - **Location data minimisation:** coordinates are used only to compute the distance. The
@@ -251,5 +281,4 @@ Attendance endpoints only ever return the signed-in employee's own records.
 
 ## Not yet included
 
-Google Sheets sync, self-service password reset, multiple offices, leave management and
-login rate limiting.
+Google Sheets sync, multiple offices, leave management and login rate limiting.

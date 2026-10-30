@@ -46,6 +46,11 @@ export function endSession(res, role) {
   res.clearCookie(COOKIES[role], cookieOptions);
 }
 
+/** Whether a session signed at `issuedAt` (JWT seconds) predates the account's last password reset. */
+export function signedBeforePasswordChange(issuedAt, passwordChangedAt) {
+  return passwordChangedAt != null && issuedAt < Math.floor(new Date(passwordChangedAt).getTime() / 1000);
+}
+
 /** The session subject for `role`, or null. Employee tokens from before roles existed have no role claim. */
 function sessionSubject(req, role) {
   const token = req.cookies?.[COOKIES[role]];
@@ -53,7 +58,7 @@ function sessionSubject(req, role) {
   try {
     const payload = jwt.verify(token, jwtSecret(), { algorithms: ['HS256'] });
     const tokenRole = payload.role ?? 'employee';
-    return { token, subject: tokenRole === role ? payload.sub : null };
+    return { token, subject: tokenRole === role ? payload.sub : null, issuedAt: payload.iat };
   } catch (err) {
     if (err instanceof HttpError) throw err;
     return { token, subject: null };
@@ -68,18 +73,20 @@ function unauthenticated(res, role, hadToken) {
 
 /** Attaches the signed-in, active employee to `req.employee` or responds 401. */
 export async function requireAuth(req, res, next) {
-  const { token, subject } = sessionSubject(req, 'employee');
+  const { token, subject, issuedAt } = sessionSubject(req, 'employee');
   const employee = subject ? await findEmployeeById(subject) : null;
-  if (!employee?.active) throw unauthenticated(res, 'employee', Boolean(token));
+  if (!employee?.active || signedBeforePasswordChange(issuedAt, employee.passwordChangedAt)) {
+    throw unauthenticated(res, 'employee', Boolean(token));
+  }
   req.employee = employee;
   next();
 }
 
 /** Attaches the signed-in admin to `req.admin` or responds 401. */
 export async function requireAdmin(req, res, next) {
-  const { token, subject } = sessionSubject(req, 'admin');
+  const { token, subject, issuedAt } = sessionSubject(req, 'admin');
   const admin = subject ? await findAdminById(subject) : null;
-  if (!admin) throw unauthenticated(res, 'admin', Boolean(token));
+  if (!admin || signedBeforePasswordChange(issuedAt, admin.passwordChangedAt)) throw unauthenticated(res, 'admin', Boolean(token));
   req.admin = admin;
   next();
 }

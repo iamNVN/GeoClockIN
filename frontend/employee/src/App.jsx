@@ -4,10 +4,12 @@ import { useAuth } from './auth/AuthContext.jsx';
 import { BottomNav } from './components/BottomNav.jsx';
 import { hideSplash } from './lib/splash.js';
 import ClockPage from './pages/ClockPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import SplashScreen from './pages/SplashScreen.jsx';
 import SummaryPage from './pages/SummaryPage.jsx';
 
@@ -46,6 +48,8 @@ export default function App() {
       ) : (
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route element={<RequireAuth />}>
             <Route element={<TabLayout />}>
               <Route index element={<HomePage />} />

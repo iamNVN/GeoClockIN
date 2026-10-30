@@ -2,7 +2,13 @@
 import { query } from './db.js';
 
 const toAdmin = (row) =>
-  row && { id: String(row.id), name: row.name, email: row.email, passwordHash: row.password_hash };
+  row && {
+    id: String(row.id),
+    name: row.name,
+    email: row.email,
+    passwordHash: row.password_hash,
+    passwordChangedAt: row.password_changed_at,
+  };
 
 export async function findAdminById(id) {
   if (!/^\d+$/.test(String(id ?? ''))) return null;
@@ -25,4 +31,4 @@ export async function updateAdmin(id, { name, email, passwordHash }) {
   return toAdmin(rows[0]);
 }
 
-export const publicAdmin = ({ passwordHash, ...admin }) => admin;
+export const publicAdmin = ({ passwordHash, passwordChangedAt, ...admin }) => admin;

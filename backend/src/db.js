@@ -44,6 +44,10 @@ CREATE TABLE IF NOT EXISTS admins (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS admins_email_key ON admins (lower(email));
 
+-- Sessions signed before an account's last password reset are rejected.
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+
 CREATE TABLE IF NOT EXISTS attendance (
   id                    BIGSERIAL   PRIMARY KEY,
   employee_id           TEXT        NOT NULL,
@@ -101,6 +105,18 @@ CREATE TABLE IF NOT EXISTS audit_log (
   details     JSONB,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- One-time password reset links sent by email; only a hash of each token is kept.
+CREATE TABLE IF NOT EXISTS password_resets (
+  token_hash  TEXT        PRIMARY KEY,
+  role        TEXT        NOT NULL CHECK (role IN ('employee', 'admin')),
+  subject_id  TEXT        NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used_at     TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS password_resets_subject_idx
+  ON password_resets (role, subject_id, created_at DESC);
 `;
 
 // Arbitrary constant identifying the schema-migration advisory lock.

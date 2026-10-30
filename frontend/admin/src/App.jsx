@@ -6,8 +6,10 @@ import { Layout } from './components/Layout.jsx';
 import AttendancePage from './pages/AttendancePage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import EmployeesPage from './pages/EmployeesPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 
 function RequireAdmin() {
@@ -43,6 +45,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route element={<RequireAdmin />}>
         <Route element={<Layout />}>
           <Route index element={<DashboardPage />} />

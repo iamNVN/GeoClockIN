@@ -5,11 +5,13 @@ import { audit } from '../../audit.js';
 import { endSession, requireAdmin, startSession } from '../../auth.js';
 import { logoVersion } from '../../branding.js';
 import { HttpError } from '../../errors.js';
+import { assertResetAvailable, isValidResetToken, resetPassword, sendResetLink } from '../../passwordReset.js';
 import { getSettings } from '../../settings.js';
 import { DUMMY_HASH } from '../auth.js';
 import { officeNow } from './common.js';
 
 const router = Router();
+const MIN_ADMIN_PASSWORD_LENGTH = 8;
 
 async function sessionPayload(admin) {
   const settings = await getSettings();
@@ -49,6 +51,29 @@ router.get('/me', requireAdmin, async (req, res) => {
   res.json(await sessionPayload(req.admin));
 });
 
+// Emails a reset link. The response is the same whether or not the account exists.
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body ?? {};
+  if (typeof email !== 'string' || !email.trim()) throw new HttpError(400, 'VALIDATION_ERROR', 'Enter your email address.');
+  assertResetAvailable();
+  const admin = await findAdminByEmail(email);
+  if (admin) await sendResetLink('admin', admin);
+  res.status(204).end();
+});
+
+router.post('/reset-password/check', async (req, res) => {
+  res.json({ valid: await isValidResetToken('admin', req.body?.token) });
+});
+
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body ?? {};
+  if (typeof password !== 'string' || password.length < MIN_ADMIN_PASSWORD_LENGTH) {
+    throw new HttpError(400, 'WEAK_PASSWORD', `The new password must be at least ${MIN_ADMIN_PASSWORD_LENGTH} characters.`);
+  }
+  await resetPassword('admin', token, password);
+  res.status(204).end();
+});
+
 // Update the signed-in admin's name, email or password.
 router.put('/account', requireAdmin, async (req, res) => {
   const { name, email, currentPassword, newPassword } = req.body ?? {};
@@ -64,8 +89,10 @@ router.put('/account', requireAdmin, async (req, res) => {
     changes.email = email.trim().toLowerCase();
   }
   if (newPassword) {
-    if (String(newPassword).length < 8) {
-      throw new HttpError(400, 'WEAK_PASSWORD', 'The new password must be at least 8 characters.', { field: 'newPassword' });
+    if (String(newPassword).length < MIN_ADMIN_PASSWORD_LENGTH) {
+      throw new HttpError(400, 'WEAK_PASSWORD', `The new password must be at least ${MIN_ADMIN_PASSWORD_LENGTH} characters.`, {
+        field: 'newPassword',
+      });
     }
     changes.passwordHash = await bcrypt.hash(String(newPassword), 10);
   }

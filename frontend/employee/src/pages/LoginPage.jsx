@@ -1,8 +1,8 @@
-import { ArrowRight, Eye, EyeOff, Info, LoaderCircle, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, Info, LoaderCircle, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
-import { Navigate, useLocation } from 'react-router';
+import { Link, Navigate, useLocation } from 'react-router';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { BrandLogo } from '../components/Logo.jsx';
+import { AuthShell } from '../components/AuthShell.jsx';
 import { stagger } from '../lib/motion.js';
 
 export default function LoginPage() {
@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [showForgotHelp, setShowForgotHelp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [shaking, setShaking] = useState(false);
@@ -50,18 +49,7 @@ export default function LoginPage() {
   const passwordInvalid = error && error.field !== 'identifier';
 
   return (
-    <main className="login route-enter">
-      <div className="login__backdrop" aria-hidden="true">
-        <span className="blob blob--one" />
-        <span className="blob blob--two" />
-        <span className="blob blob--three" />
-      </div>
-
-      <div className="login__brand reveal">
-        <BrandLogo width={156} />
-        <p>Employee Attendance</p>
-      </div>
-
+    <AuthShell>
       <form
         className={`card login__card reveal${shaking ? ' shake' : ''}`}
         style={stagger(1)}
@@ -138,22 +126,10 @@ export default function LoginPage() {
             <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
             Remember me
           </label>
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => setShowForgotHelp((v) => !v)}
-            aria-expanded={showForgotHelp}
-            aria-controls="forgot-help"
-          >
+          <Link to="/forgot-password" state={{ identifier: identifier.trim() }} className="link-button">
             Forgot password?
-          </button>
+          </Link>
         </div>
-
-        {showForgotHelp && (
-          <p id="forgot-help" className="notice notice--info pop-in">
-            <Info aria-hidden="true" /> Passwords are reset by your administrator. Please contact HR or your manager.
-          </p>
-        )}
 
         {error && (
           <p id="login-error" className="notice notice--error pop-in" role="alert">
@@ -173,10 +149,6 @@ export default function LoginPage() {
           )}
         </button>
       </form>
-
-      <p className="login__footer reveal" style={stagger(2)}>
-        <ShieldCheck aria-hidden="true" /> Attendance is verified against your office location
-      </p>
-    </main>
+    </AuthShell>
   );
 }
