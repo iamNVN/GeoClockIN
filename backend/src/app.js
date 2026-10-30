@@ -4,6 +4,7 @@ import { query } from './db.js';
 import { HttpError } from './errors.js';
 import adminRoutes from './routes/admin/index.js';
 import attendanceRoutes from './routes/attendance.js';
+import brandingRoutes from './routes/branding.js';
 import authRoutes from './routes/auth.js';
 
 const app = express();
@@ -30,6 +31,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/branding', brandingRoutes);
 
 app.use('/api', () => {
   throw new HttpError(404, 'NOT_FOUND', 'This API endpoint does not exist.');
@@ -43,7 +45,7 @@ app.use((err, req, res, next) => {
     return res.status(err.status).json({ error: { code: err.code, message: err.message }, ...err.details });
   }
   if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: { code: 'TOO_LARGE', message: 'The upload is too large (5 MB maximum).' } });
+    return res.status(413).json({ error: { code: 'TOO_LARGE', message: 'The file is too large to upload.' } });
   }
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'The request could not be read.' } });

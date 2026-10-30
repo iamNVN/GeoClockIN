@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { findAdminByEmail, publicAdmin, updateAdmin } from '../../admins.js';
 import { audit } from '../../audit.js';
 import { endSession, requireAdmin, startSession } from '../../auth.js';
+import { logoVersion } from '../../branding.js';
 import { HttpError } from '../../errors.js';
 import { getSettings } from '../../settings.js';
 import { DUMMY_HASH } from '../auth.js';
@@ -19,6 +20,7 @@ async function sessionPayload(admin) {
       companyName: settings.company.name,
       officeName: settings.office.name,
       timezone: settings.schedule.timezone,
+      logoVersion: await logoVersion(),
     },
     today: date,
     serverTime: instant.toISOString(),

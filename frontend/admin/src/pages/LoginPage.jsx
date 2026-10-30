@@ -2,8 +2,10 @@ import { ArrowRight, ChartNoAxesColumn, Eye, EyeOff, Info, LoaderCircle, Lock, M
 import { useState } from 'react';
 import { Navigate, useLocation } from 'react-router';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { CompanyLogo } from '../components/CompanyLogo.jsx';
 
-const LOGO = `${import.meta.env.BASE_URL}logo.webp`;
+// The employee app is served at / in production; locally it runs on its own dev server.
+const EMPLOYEE_APP_URL = import.meta.env.VITE_EMPLOYEE_APP_URL ?? (import.meta.env.DEV ? 'http://localhost:5173/' : '/');
 
 const FEATURES = [
   { Icon: MapPin, title: 'Location Verified', text: 'Accurate attendance with GPS geofencing' },
@@ -47,7 +49,7 @@ export default function LoginPage() {
   return (
     <main className="auth">
       <section className="auth__aside">
-        <img className="auth__logo reveal" src={LOGO} alt="GeoClockIN" width="170" height="134" />
+        <CompanyLogo className="auth__logo reveal" width="170" height="134" />
         <h1 className="auth__headline reveal" style={{ '--i': 1 }}>
           Simple Attendance
           <br />
@@ -73,7 +75,7 @@ export default function LoginPage() {
 
       <section className="auth__panel">
         <form className="auth__card reveal" style={{ '--i': 1 }} onSubmit={submit} noValidate>
-          <img className="auth__card-logo" src={LOGO} alt="" width="120" height="95" />
+          <CompanyLogo className="auth__card-logo" width="120" height="95" alt="" />
           <h2>Welcome Back</h2>
           <p className="auth__card-sub">Sign in to the admin dashboard</p>
 
@@ -150,7 +152,7 @@ export default function LoginPage() {
             {!submitting && <ArrowRight aria-hidden="true" />}
           </button>
           <p className="auth__employee-link">
-            Employee? <a href="/">Open the employee app</a>
+            Employee? <a href={EMPLOYEE_APP_URL}>Open the employee app</a>
           </p>
         </form>
       </section>

@@ -54,6 +54,11 @@ export function AuthProvider({ children }) {
     [],
   );
 
+  const updateOrganization = useCallback(
+    (changes) => setState((s) => ({ ...s, session: { ...s.session, organization: { ...s.session.organization, ...changes } } })),
+    [],
+  );
+
   const value = useMemo(
     () => ({
       status: state.status,
@@ -68,8 +73,9 @@ export function AuthProvider({ children }) {
       logout,
       retry: restore,
       updateAdmin,
+      updateOrganization,
     }),
-    [state, date, login, logout, restore, updateAdmin],
+    [state, date, login, logout, restore, updateAdmin, updateOrganization],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

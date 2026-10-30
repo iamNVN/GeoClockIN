@@ -1,5 +1,6 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { audit } from '../../audit.js';
+import { deleteLogo, logoVersion, MAX_LOGO_BYTES, saveLogo } from '../../branding.js';
 import { query } from '../../db.js';
 import { saveSettings, storableSettings } from '../../settings.js';
 
@@ -11,6 +12,7 @@ router.get('/', async (req, res) => {
     settings: storableSettings(req.settings),
     updatedAt: rows[0]?.updated_at ?? null,
     updatedBy: rows[0]?.updated_by ?? null,
+    logoVersion: await logoVersion(),
   });
 });
 
@@ -28,6 +30,19 @@ router.put('/', async (req, res) => {
     after: saved,
   });
   res.json({ settings: saved, updatedAt: new Date().toISOString(), updatedBy: req.admin.email });
+});
+
+// Company logo: the image file is the raw request body.
+router.put('/logo', express.raw({ type: () => true, limit: MAX_LOGO_BYTES + 1024 }), async (req, res) => {
+  const version = await saveLogo(req.body);
+  await audit(null, req.admin, 'logo.update', 'settings', 'logo', { bytes: req.body.length });
+  res.json({ logoVersion: version });
+});
+
+router.delete('/logo', async (req, res) => {
+  await deleteLogo();
+  await audit(null, req.admin, 'logo.remove', 'settings', 'logo');
+  res.json({ logoVersion: null });
 });
 
 export default router;

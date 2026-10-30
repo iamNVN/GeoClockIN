@@ -4,11 +4,13 @@
 // - Page navigations: network first (always the latest deploy), cached copy
 //   when offline.
 // - /assets/* (hashed by Vite) and /brand/* images, icons: cache first.
-// - /api/*: never cached — attendance must always reach the server.
+// - /api/branding/logo: served from cache, refreshed in the background.
+// - Rest of /api/*: never cached — attendance must always reach the server.
 // - /admin/*: left alone — the admin dashboard is a separate app.
 //
 // Bump VERSION when files in /brand change (they keep the same URL).
-const VERSION = 'v2';
+const VERSION = 'v3';
+const LOGO_PATH = '/api/branding/logo';
 const STATIC_CACHE = `geoclockin-static-${VERSION}`;
 const PAGE_CACHE = `geoclockin-pages-${VERSION}`;
 const PRECACHE = ['/brand/logo.webp', '/brand/office-scene.svg', '/favicon.png'];
@@ -37,6 +39,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+  if (url.origin === self.location.origin && url.pathname === LOGO_PATH) {
+    event.respondWith(staleWhileRevalidate(event));
+    return;
+  }
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) return;
 
   if (request.mode === 'navigate') {
@@ -60,6 +66,19 @@ async function networkFirst(request) {
   } catch {
     return (await cache.match('/')) ?? Response.error();
   }
+}
+
+async function staleWhileRevalidate(event) {
+  const cache = await caches.open(STATIC_CACHE);
+  const cached = await cache.match(event.request);
+  const refresh = fetch(event.request)
+    .then((response) => {
+      if (response.ok) cache.put(event.request, response.clone());
+      return response;
+    })
+    .catch(() => cached ?? Response.error());
+  event.waitUntil(refresh.then(() => undefined));
+  return cached ?? refresh;
 }
 
 async function cacheFirst(request) {

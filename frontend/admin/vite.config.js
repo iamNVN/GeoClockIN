@@ -6,6 +6,8 @@ const apiProxy = {
     target: process.env.API_URL ?? 'http://localhost:3001',
     changeOrigin: true,
   },
+  // The default logo lives in the employee app (/brand); its dev server serves it locally.
+  '/brand': { target: process.env.EMPLOYEE_URL ?? 'http://localhost:5173', changeOrigin: true },
 };
 
 // Served from /admin on the same domain as the employee app, so both share

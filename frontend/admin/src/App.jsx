@@ -1,6 +1,7 @@
 import { LoaderCircle, RefreshCw } from 'lucide-react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
 import { useAuth } from './auth/AuthContext.jsx';
+import { CompanyLogo } from './components/CompanyLogo.jsx';
 import { Layout } from './components/Layout.jsx';
 import AttendancePage from './pages/AttendancePage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
@@ -20,7 +21,7 @@ function Boot() {
   const { status, error, retry } = useAuth();
   return (
     <div className="boot">
-      <img src={`${import.meta.env.BASE_URL}logo.webp`} alt="GeoClockIN" width="180" height="142" />
+      <CompanyLogo width="180" height="142" />
       {status === 'error' ? (
         <>
           <p role="alert">{error.message}</p>

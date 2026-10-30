@@ -83,6 +83,14 @@ CREATE TABLE IF NOT EXISTS attendance_attempts (
 CREATE INDEX IF NOT EXISTS attendance_attempts_employee_idx
   ON attendance_attempts (employee_id, created_at DESC);
 
+-- Company logo uploaded from the dashboard; replaces the default logo in both apps.
+CREATE TABLE IF NOT EXISTS branding_assets (
+  name          TEXT        PRIMARY KEY,
+  content_type  TEXT        NOT NULL,
+  data          BYTEA       NOT NULL,
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Administrative changes: employees, settings and attendance corrections.
 CREATE TABLE IF NOT EXISTS audit_log (
   id          BIGSERIAL   PRIMARY KEY,

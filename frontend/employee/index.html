@@ -11,7 +11,7 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="preload" as="image" href="/brand/logo.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/api/branding/logo" fetchpriority="high" />
     <title>GeoClockIN</title>
     <!--
       Splash styles live here (not in the bundle) so the splash paints on the
@@ -66,7 +66,8 @@
         display: block;
         width: 196px;
         max-width: 70vw;
-        height: auto;
+        height: 155px;
+        object-fit: contain;
         opacity: 0;
       }
       .splash__logo.is-loaded {
@@ -154,12 +155,13 @@
       <div class="splash__brand">
         <img
           class="splash__logo"
-          src="/brand/logo.webp"
+          src="/api/branding/logo"
           width="196"
           height="155"
           alt="GeoClockIN"
           fetchpriority="high"
           onload="this.classList.add('is-loaded')"
+          onerror="this.onerror = null; this.src = '/brand/logo.webp'"
         />
         <p class="splash__motto">Right Place. Right Time.</p>
       </div>

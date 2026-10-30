@@ -21,6 +21,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { useApi } from '../hooks/useApi.js';
 import { qs } from '../lib/api.js';
 import { formatLongDate, formatTime } from '../lib/format.js';
+import { CompanyLogo } from './CompanyLogo.jsx';
 import { Menu } from './Menu.jsx';
 import { useToast } from './Toast.jsx';
 import { Avatar } from './ui.jsx';
@@ -33,15 +34,13 @@ const NAV = [
   { to: '/settings', label: 'Settings', Icon: Settings },
 ];
 
-const LOGO = `${import.meta.env.BASE_URL}logo.webp`;
-
 function Sidebar({ open, onClose }) {
   const { organization } = useAuth();
   return (
     <>
       <aside className={`sidebar${open ? ' is-open' : ''}`} aria-label="Main navigation">
         <div className="sidebar__brand">
-          <img src={LOGO} alt="GeoClockIN" width="150" height="118" />
+          <CompanyLogo width="150" height="118" />
           <button type="button" className="icon-btn sidebar__close" onClick={onClose} aria-label="Close menu">
             <X aria-hidden="true" />
           </button>

@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Clock,
   Globe,
+  ImageUp,
   LoaderCircle,
   MapPin,
   Plus,
@@ -13,9 +14,10 @@ import {
   Undo2,
   UserRound,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { CompanyLogo } from '../components/CompanyLogo.jsx';
 import { MapPicker } from '../components/MapPicker.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { EmptyState, PageHead, Skeleton } from '../components/ui.jsx';
@@ -194,14 +196,14 @@ const errorFor = (error, field) => (error?.field === field ? error.message : nul
 
 function GeneralTab({ draft, update, error }) {
   const { company, schedule } = draft;
+  // Browsers list some zones under older names (Asia/Calcutta for Asia/Kolkata),
+  // so make sure the saved zone is always an option.
+  const zones = TIME_ZONES.includes(schedule.timezone) ? TIME_ZONES : [schedule.timezone, ...TIME_ZONES];
   return (
     <>
       <Section title="Company Information" subtitle="Basic information about your organization">
         <div className="company-grid">
-          <div className="company-logo">
-            <img src={`${import.meta.env.BASE_URL}logo.webp`} alt="" width="120" height="95" />
-            <p className="muted">Shown in both apps.</p>
-          </div>
+          <LogoUploader />
           <div className="form-grid">
             <TextField label="Company Name" value={company.name} onChange={(v) => update('company', { name: v })} error={errorFor(error, 'company.name')} />
             <TextField label="Email" type="email" value={company.email} onChange={(v) => update('company', { email: v })} />
@@ -211,7 +213,7 @@ function GeneralTab({ draft, update, error }) {
               <span className="select select--icon">
                 <Globe className="select__icon" aria-hidden="true" />
                 <select value={schedule.timezone} onChange={(e) => update('schedule', { timezone: e.target.value })}>
-                  {TIME_ZONES.map((tz) => (
+                  {zones.map((tz) => (
                     <option key={tz} value={tz}>
                       {tz.replace(/_/g, ' ')}
                     </option>
@@ -228,6 +230,77 @@ function GeneralTab({ draft, update, error }) {
         </div>
       </Section>
     </>
+  );
+}
+
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+/** Company logo, used by both apps. Uploads straight away (not part of Save Changes). */
+function LogoUploader() {
+  const { organization, updateOrganization } = useAuth();
+  const toast = useToast();
+  const inputRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const custom = organization.logoVersion != null;
+
+  async function upload(file) {
+    if (!file) return;
+    if (file.size > MAX_LOGO_BYTES) {
+      toast.error('The logo must be 2 MB or smaller.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { logoVersion } = await api('/admin/settings/logo', { method: 'PUT', raw: file });
+      updateOrganization({ logoVersion });
+      toast.success('Logo updated. Employees see it the next time they open the app.');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    setBusy(true);
+    try {
+      await api('/admin/settings/logo', { method: 'DELETE' });
+      updateOrganization({ logoVersion: null });
+      toast.success('Logo removed. Both apps use the GeoClockIN logo again.');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="company-logo">
+      <span className="company-logo__preview">
+        <CompanyLogo width="132" height="104" alt="Company logo" />
+      </span>
+      <div className="company-logo__actions">
+        <button type="button" className="btn btn--secondary btn--sm" onClick={() => inputRef.current.click()} disabled={busy}>
+          {busy ? <LoaderCircle className="spin" aria-hidden="true" /> : <ImageUp aria-hidden="true" />} Change Logo
+        </button>
+        {custom && (
+          <button type="button" className="btn btn--danger btn--sm" onClick={remove} disabled={busy}>
+            Remove
+          </button>
+        )}
+      </div>
+      <p className="muted company-logo__hint">PNG, JPG, WebP or SVG, up to 2 MB. Square or wide logos work best. Shown in both apps.</p>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        hidden
+        onChange={(e) => {
+          upload(e.target.files[0]);
+          e.target.value = '';
+        }}
+      />
+    </div>
   );
 }
 

@@ -271,7 +271,7 @@ svg {
 .brand-logo {
   display: block;
   max-width: 100%;
-  height: auto;
+  object-fit: contain;
 }
 
 /* The splash itself is styled in index.html; this is its error state. */
