@@ -4,17 +4,40 @@ import { useEffect, useRef, useState } from 'react';
 
 const OFFICE_CODE_PREFIX = 'GCQ1.';
 
-/** A user-facing explanation of why the camera didn't start. */
+/** A user-facing explanation of why the camera didn't start (`error` from getUserMedia). */
 function cameraProblem(error) {
-  const name = error?.name ?? '';
-  const text = String(error?.message ?? error ?? '');
-  if (!window.isSecureContext) return 'The camera needs a secure (https) connection.';
-  if (name === 'NotAllowedError' || /permission|denied/i.test(text)) {
-    return 'Allow camera access for this site in your browser settings, then try again.';
+  if (!window.isSecureContext) return 'The camera needs a secure (https) address. Open GeoClockIN from its https link.';
+  switch (error?.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Camera access is blocked. Allow the camera for this site (tap the icon next to the address, then Permissions), then try again.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'No camera was found on this device.';
+    case 'NotReadableError':
+    case 'AbortError':
+      return 'The camera is being used by another app. Close it and try again.';
+    case 'NotSupportedError':
+      return 'This browser can’t use the camera here. If you opened the link inside another app (WhatsApp, Instagram…), open it in Chrome or Safari.';
+    default:
+      return 'Couldn’t start the camera. Try again.';
   }
-  if (name === 'NotFoundError' || /not found/i.test(text)) return 'No camera was found on this device.';
-  if (name === 'NotReadableError') return 'The camera is being used by another app. Close it and try again.';
-  return 'Couldn’t start the camera. Try again.';
+}
+
+/**
+ * Opens the back camera. Done here rather than by the scanner library, which
+ * hides the browser's reason when the camera can't be opened.
+ */
+async function openCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) throw new DOMException('No camera API', 'NotSupportedError');
+  const video = { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } };
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video, audio: false });
+  } catch (error) {
+    // Only an impossible size or facing mode is worth a plain second try.
+    if (error.name !== 'OverconstrainedError') throw error;
+    return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  }
 }
 
 /**
@@ -55,18 +78,29 @@ export function OfficeQrScanner({ onCode, busy, message }) {
       },
       { returnDetailedScanResult: true, preferredCamera: 'environment', maxScansPerSecond: 20, onDecodeError: () => {} },
     );
+    let stream = null;
     setCamera({ status: 'starting' });
-    scanner.start().then(
-      () => active && setCamera({ status: 'scanning' }),
-      (error) => {
+    openCamera()
+      .then(async (opened) => {
+        stream = opened;
+        if (!active) return;
+        // The scanner uses the stream already on the video element.
+        video.srcObject = stream;
+        await scanner.start();
+        if (active) setCamera({ status: 'scanning' });
+      })
+      .catch((error) => {
         if (!active) return;
         console.warn('Camera failed to start:', error);
         setCamera({ status: 'failed', problem: cameraProblem(error) });
-      },
-    );
+      })
+      .finally(() => {
+        if (!active) stream?.getTracks().forEach((track) => track.stop());
+      });
     return () => {
       active = false;
       scanner.destroy();
+      stream?.getTracks().forEach((track) => track.stop());
       video.remove();
     };
   }, [attempt]);
