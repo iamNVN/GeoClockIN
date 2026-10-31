@@ -650,7 +650,11 @@ const DISPLAY_LINK = employeeAppLink('display');
 
 const QR_FACTS = [
   { Icon: MapPin, title: 'Location first', text: 'The QR scan unlocks Clock In only after the location check passes. The recorded time is the location check.' },
-  { Icon: Timer, title: 'Changes every second', text: 'Each code works for 5 seconds, so a photo or screenshot of it is useless almost at once.' },
+  {
+    Icon: Timer,
+    title: 'New code every second',
+    text: 'The display shows a new code every second, and each code expires 5 seconds later, so a photo or screenshot of it stops working almost at once.',
+  },
   { Icon: ShieldCheck, title: 'Only paired screens', text: 'Each display signs codes with its own key. Opening the link elsewhere only shows a pairing code, and its codes are rejected.' },
 ];
 
