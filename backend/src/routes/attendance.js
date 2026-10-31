@@ -12,10 +12,20 @@ import {
   todayState,
 } from '../lib/attendance.js';
 import { parseCoordinates, verifyLocation } from '../lib/geo.js';
+import { verifyQrToken } from '../lib/qrToken.js';
 import { addDays, minDate, monthBounds, startOfWeek, zonedClock } from '../lib/time.js';
+import { issuePresence, PRESENCE_ACTIONS, presenceExpired, readPresence } from '../presence.js';
 import { attendanceStartDate, getSettings } from '../settings.js';
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+const QR_MESSAGES = {
+  NOT_OFFICE_QR: 'This isn’t the office QR code. Scan the code on the office display.',
+  UNKNOWN_DISPLAY: 'This QR code comes from a display that isn’t registered. Ask your admin to add it in Settings.',
+  INVALID: 'This QR code isn’t valid. Scan the live code on the office display.',
+  EXPIRED: 'This QR code has expired. Scan the live code on the office display.',
+  AHEAD: 'The office display’s clock is ahead. Ask your admin to check the display’s time.',
+};
 
 const router = Router();
 router.use(requireAuth);
@@ -52,6 +62,36 @@ async function requireVerifiedLocation(employeeId, action, coords, settings) {
     throw new HttpError(422, `LOCATION_${verification.code}`, verification.message, { verification });
   }
   return verification;
+}
+
+/** `check_in` / `check_out` from the request body, or a 400. */
+function actionParam(body) {
+  if (!PRESENCE_ACTIONS.includes(body?.action)) throw new HttpError(400, 'INVALID_ACTION', 'Unknown attendance action.');
+  return body.action;
+}
+
+const qrRequiredError = () =>
+  new HttpError(403, 'QR_REQUIRED', 'Scan the QR code on the office display to continue. Reload the app if you don’t see the scanner.');
+
+/**
+ * When and where the employee clocked in or out. With a presence proof, that
+ * is the time of the location check (followed by the office QR scan when it is
+ * required). Older app versions send coordinates instead, checked now, which
+ * is only allowed while the QR code is not required.
+ */
+async function attendanceProof(req, action) {
+  const { settings } = req;
+  if (req.body?.presence) {
+    const presence = readPresence(req.body.presence, req.employee.id, action);
+    if (settings.qr.required && !presence.qrDisplay) {
+      await logAttempt(req.employee.id, action, 'qr_missing', presence);
+      throw qrRequiredError();
+    }
+    return { instant: presence.at, verification: { distanceM: presence.distanceM, accuracyM: presence.accuracyM }, qrDisplay: presence.qrDisplay };
+  }
+  if (settings.qr.required) throw qrRequiredError();
+  const verification = await requireVerifiedLocation(req.employee.id, action, parseCoordinates(req.body), settings);
+  return { instant: new Date(), verification, qrDisplay: null };
 }
 
 async function rejectSequence(employeeId, action, code, message) {
@@ -92,27 +132,56 @@ router.get('/overview', async (req, res) => {
   });
 });
 
-// Lets the app show "Location Verified" before the employee confirms.
-// Nothing is stored; check-in / check-out re-verify independently.
+// Step 1: the geofence. When the location passes and `action` is given, the
+// reply carries a signed presence proof holding the time of this check; that
+// time is what clocking in or out records (the proof lasts a few minutes).
 router.post('/verify-location', (req, res) => {
-  res.json({ verification: verify(parseCoordinates(req.body), req.settings) });
+  const verification = verify(parseCoordinates(req.body), req.settings);
+  const action = PRESENCE_ACTIONS.includes(req.body?.action) ? req.body.action : null;
+  const at = new Date();
+  const presence =
+    verification.ok && action
+      ? { token: issuePresence({ employeeId: req.employee.id, action, at, verification }), at: at.toISOString(), qrRequired: req.settings.qr.required }
+      : null;
+  res.json({ verification, presence });
+});
+
+// Step 2 (when required): the live, signed code on the office display. Adds
+// the display to the presence proof; the recorded time stays that of step 1.
+router.post('/verify-qr', async (req, res) => {
+  const action = actionParam(req.body);
+  const presence = readPresence(req.body.presence, req.employee.id, action);
+  const result = verifyQrToken(req.body.code, req.settings.qr.displays);
+  if (!result.ok) {
+    await logAttempt(req.employee.id, action, `qr_${result.code.toLowerCase()}`, presence);
+    throw new HttpError(422, `QR_${result.code}`, QR_MESSAGES[result.code]);
+  }
+  await logAttempt(req.employee.id, action, 'qr_verified', presence);
+  const token = issuePresence({
+    employeeId: req.employee.id,
+    action,
+    at: presence.at,
+    verification: presence,
+    qrDisplay: result.display.name,
+    expiresAt: presence.expiresAt,
+  });
+  res.json({ presence: { token, qrDisplay: result.display.name } });
 });
 
 router.post('/check-in', async (req, res) => {
-  const coords = parseCoordinates(req.body);
-  const { instant, date, secondsOfDay } = now(req.settings);
   const employeeId = req.employee.id;
+  const { instant, verification, qrDisplay } = await attendanceProof(req, 'check_in');
+  const { date, secondsOfDay } = zonedClock(instant, req.settings.schedule.timezone);
 
   if (await findRecord(employeeId, date)) {
     await rejectSequence(employeeId, 'check_in', 'ALREADY_CHECKED_IN', 'You have already clocked in today.');
   }
-  const verification = await requireVerifiedLocation(employeeId, 'check_in', coords, req.settings);
 
   // The unique (employee_id, work_date) constraint makes concurrent duplicate
   // check-ins a no-op rather than a second record.
   const { rows } = await query(
-    `INSERT INTO attendance (employee_id, work_date, check_in_at, check_in_distance_m, check_in_accuracy_m, is_late)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO attendance (employee_id, work_date, check_in_at, check_in_distance_m, check_in_accuracy_m, is_late, check_in_qr)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (employee_id, work_date) DO NOTHING
      RETURNING *`,
     [
@@ -122,6 +191,7 @@ router.post('/check-in', async (req, res) => {
       verification.distanceM,
       verification.accuracyM,
       isLateCheckIn(date, secondsOfDay, req.settings.schedule),
+      qrDisplay,
     ],
   );
   if (!rows[0]) {
@@ -133,9 +203,9 @@ router.post('/check-in', async (req, res) => {
 });
 
 router.post('/check-out', async (req, res) => {
-  const coords = parseCoordinates(req.body);
-  const { instant, date } = now(req.settings);
   const employeeId = req.employee.id;
+  const { instant, verification, qrDisplay } = await attendanceProof(req, 'check_out');
+  const { date } = zonedClock(instant, req.settings.schedule.timezone);
 
   const existing = await findRecord(employeeId, date);
   if (!existing) {
@@ -144,14 +214,15 @@ router.post('/check-out', async (req, res) => {
   if (existing.check_out_at) {
     await rejectSequence(employeeId, 'check_out', 'ALREADY_CHECKED_OUT', 'You have already clocked out today.');
   }
-  const verification = await requireVerifiedLocation(employeeId, 'check_out', coords, req.settings);
+  // A location check made before this day's check-in cannot end it.
+  if (instant < existing.check_in_at) throw presenceExpired();
 
   const { rows } = await query(
     `UPDATE attendance
-        SET check_out_at = $3, check_out_distance_m = $4, check_out_accuracy_m = $5, updated_at = now()
+        SET check_out_at = $3, check_out_distance_m = $4, check_out_accuracy_m = $5, check_out_qr = $6, updated_at = now()
       WHERE employee_id = $1 AND work_date = $2 AND check_out_at IS NULL
       RETURNING *`,
-    [employeeId, date, instant, verification.distanceM, verification.accuracyM],
+    [employeeId, date, instant, verification.distanceM, verification.accuracyM, qrDisplay],
   );
   if (!rows[0]) {
     await rejectSequence(employeeId, 'check_out', 'ALREADY_CHECKED_OUT', 'You have already clocked out today.');

@@ -2220,6 +2220,188 @@ svg {
   transform: translateX(-50%);
 }
 
+/* Office QR step: location ✓ → scan → confirm. */
+.clock-steps {
+  display: grid;
+  gap: 8px;
+}
+
+.clock-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.clock-step > svg {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--subtle);
+}
+
+.clock-step.is-done > svg,
+.clock-step.is-current > svg {
+  color: var(--brand);
+}
+
+.clock-step.is-current {
+  border-color: var(--brand-ring);
+  box-shadow: 0 0 0 3px var(--brand-softer);
+}
+
+.clock-step strong {
+  display: block;
+  font-size: 13.5px;
+}
+
+.clock-step small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.qr-scan {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 12px;
+}
+
+.qr-scan__view {
+  position: relative;
+  width: min(100%, 300px);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: #0f172a;
+}
+
+.qr-scan__view video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Corner brackets around the area the scanner reads. */
+.qr-scan__frame {
+  --c: rgb(255 255 255 / 0.95);
+  --l: 30px;
+  --w: 4px;
+  position: absolute;
+  inset: 16%;
+  border-radius: 10px;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / var(--l) var(--w),
+    linear-gradient(var(--c), var(--c)) top left / var(--w) var(--l),
+    linear-gradient(var(--c), var(--c)) top right / var(--l) var(--w),
+    linear-gradient(var(--c), var(--c)) top right / var(--w) var(--l),
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) var(--w),
+    linear-gradient(var(--c), var(--c)) bottom left / var(--w) var(--l),
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) var(--w),
+    linear-gradient(var(--c), var(--c)) bottom right / var(--w) var(--l);
+  background-repeat: no-repeat;
+  box-shadow: 0 0 0 999px rgb(15 23 42 / 0.32);
+}
+
+.qr-scan__line {
+  position: absolute;
+  top: 18%;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-bright), transparent);
+  box-shadow: 0 0 12px var(--brand-bright);
+  animation: scan-line 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes scan-line {
+  to {
+    top: 82%;
+  }
+}
+
+.qr-scan__overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 20px;
+  background: rgb(15 23 42 / 0.6);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.qr-scan__overlay svg {
+  width: 26px;
+  height: 26px;
+}
+
+.qr-scan__overlay--failed {
+  background: rgb(15 23 42 / 0.86);
+  font-weight: 500;
+}
+
+.qr-scan__hint {
+  max-width: 34ch;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.qr-scan__hint.is-warning {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.qr-done {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 22px 16px;
+  text-align: center;
+}
+
+.qr-done__icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.qr-done__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.qr-done h2 {
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.qr-done p {
+  max-width: 32ch;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.qr-done strong {
+  color: var(--ink);
+}
+
 .clock-actions {
   position: sticky;
   bottom: 0;

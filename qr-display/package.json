@@ -1,0 +1,16 @@
+{
+  "name": "@geoclockin/qr-display",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Office display for GeoClockIN: a signed QR code that changes every second.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
+}

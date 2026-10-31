@@ -2,6 +2,7 @@
 // Pure: used when seeding, when loading from the database and when an admin
 // saves changes.
 import { HttpError } from '../errors.js';
+import { keyIdFor, publicKeyFrom } from './qrToken.js';
 import { isValidDate, isValidTimeZone, parseTimeOfDay } from './time.js';
 
 class SettingsError extends HttpError {
@@ -51,7 +52,7 @@ const label = (field) => LABELS[field] ?? field;
  * HttpError naming the offending field.
  */
 export function normalizeSettings(raw = {}) {
-  const { company = {}, office = {}, schedule = {}, departments = [] } = raw;
+  const { company = {}, office = {}, schedule = {}, departments = [], qr = {} } = raw;
 
   const workStartMinutes = time(schedule.workStart, 'schedule.workStart');
   const workEndMinutes = time(schedule.workEnd, 'schedule.workEnd');
@@ -82,6 +83,22 @@ export function normalizeSettings(raw = {}) {
 
   const departmentList = [...new Set((departments ?? []).map((d) => text(d, 'departments', { max: 60 })).filter(Boolean))];
 
+  // Office displays showing the signed QR code; the id is derived from the key.
+  const displays = (qr.displays ?? []).map((d, i) => {
+    const publicKey = typeof d?.publicKey === 'string' ? d.publicKey.trim() : '';
+    if (!publicKeyFrom(publicKey)) {
+      throw new SettingsError(`qr.displays.${i}.publicKey`, 'The display key is not valid. Copy it exactly as the display app prints it.');
+    }
+    return { id: keyIdFor(publicKey), name: text(d.name, `qr.displays.${i}.name`, { required: true, max: 60 }), publicKey };
+  });
+  if (new Set(displays.map((d) => d.id)).size !== displays.length) {
+    throw new SettingsError('qr.displays', 'This display is already added.');
+  }
+  const qrRequired = qr.required === true;
+  if (qrRequired && displays.length === 0) {
+    throw new SettingsError('qr.required', 'Add an office display before requiring the QR code.');
+  }
+
   return {
     company: {
       name: text(company.name, 'company.name', { required: true, max: 120 }),
@@ -109,6 +126,7 @@ export function normalizeSettings(raw = {}) {
       holidayDates: holidays.map((h) => h.date),
     },
     departments: departmentList,
+    qr: { required: qrRequired, displays },
   };
 }
 

@@ -12,7 +12,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 let warnedAboutSecret = false;
 
-function jwtSecret() {
+export function jwtSecret() {
   const secret = process.env.JWT_SECRET;
   if (secret) return secret;
   if (isProduction) {

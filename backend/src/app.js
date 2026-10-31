@@ -22,7 +22,8 @@ app.use('/api', (req, res, next) => {
 app.get('/api/health', async (req, res) => {
   try {
     await query('SELECT 1');
-    res.json({ status: 'ok', database: 'ok' });
+    // `time` lets the office QR display keep its clock in step with the server.
+    res.json({ status: 'ok', database: 'ok', time: new Date().toISOString() });
   } catch {
     res.status(503).json({ status: 'degraded', database: 'unavailable' });
   }

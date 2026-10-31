@@ -1,8 +1,9 @@
-import { Clock, LoaderCircle, LogOut, MapPin, RefreshCw, Ruler, TriangleAlert } from 'lucide-react';
+import { CircleCheck, Clock, LoaderCircle, LogOut, MapPin, QrCode, RefreshCw, Ruler, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { DistanceGauge } from '../components/DistanceGauge.jsx';
+import { OfficeQrScanner } from '../components/OfficeQrScanner.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { Radar } from '../components/Radar.jsx';
 import { Skeleton } from '../components/Skeleton.jsx';
@@ -13,15 +14,14 @@ import { formatDistanceShort, formatDuration, formatTime, formatToday } from '..
 import { getCurrentPosition, LocationError, toCoordinates } from '../lib/geolocation.js';
 import { stagger } from '../lib/motion.js';
 
-// A verified position older than this is re-read before submitting.
-const POSITION_MAX_AGE_MS = 60_000;
-
 const ACTIONS = {
   in: {
     title: 'Clock In',
     confirm: 'Confirm Clock In',
     done: 'Clocked In Successfully',
     endpoint: '/attendance/check-in',
+    key: 'check_in',
+    noun: 'clock-in',
     Icon: Clock,
   },
   out: {
@@ -29,6 +29,8 @@ const ACTIONS = {
     confirm: 'Confirm Clock Out',
     done: 'Clocked Out Successfully',
     endpoint: '/attendance/check-out',
+    key: 'check_out',
+    noun: 'clock-out',
     Icon: LogOut,
   },
 };
@@ -59,8 +61,11 @@ export default function ClockPage() {
 
 /**
  * phase.name:
- *   locating  – reading GPS and pre-verifying with the server
- *   verified  – inside the geofence; can confirm
+ *   locating  – reading GPS and verifying it with the server
+ *   verified  – inside the geofence. `presence` is the server's signed proof
+ *               of the check (its time is what gets recorded). When the office
+ *               QR code is required, `qr` tracks the scan and confirming waits
+ *               for it.
  *   rejected  – outside the geofence or the reading is too imprecise
  *   failed    – no position (permission, GPS off, timeout) or network error
  *   blocked   – the attendance sequence doesn't allow this action
@@ -78,15 +83,15 @@ function ClockFlow({ action }) {
     setPhase({ name: 'locating' });
     try {
       const position = await getCurrentPosition();
-      const { verification } = await api('/attendance/verify-location', {
+      const { verification, presence } = await api('/attendance/verify-location', {
         method: 'POST',
-        body: toCoordinates(position),
+        body: { ...toCoordinates(position), action: config.key },
       });
-      if (run === runRef.current) setPhase({ name: verification.ok ? 'verified' : 'rejected', verification, position });
+      if (run === runRef.current) setPhase({ name: verification.ok ? 'verified' : 'rejected', verification, presence });
     } catch (error) {
       if (run === runRef.current) setPhase({ name: 'failed', error });
     }
-  }, []);
+  }, [config.key]);
 
   useEffect(() => {
     locate();
@@ -95,19 +100,38 @@ function ClockFlow({ action }) {
     };
   }, [locate]);
 
+  // A code seen by the scanner: the server checks its signature and age.
+  async function checkCode(code) {
+    const run = runRef.current;
+    setPhase((p) => ({ ...p, qr: { status: 'verifying' } }));
+    try {
+      const { presence } = await api('/attendance/verify-qr', {
+        method: 'POST',
+        body: { action: config.key, presence: phase.presence.token, code },
+      });
+      if (run !== runRef.current) return;
+      navigator.vibrate?.(40);
+      setPhase((p) => ({ ...p, presence: { ...p.presence, token: presence.token }, qr: { status: 'verified', display: presence.qrDisplay } }));
+    } catch (error) {
+      if (run !== runRef.current) return;
+      if (error.code === 'PRESENCE_EXPIRED') locate();
+      else setPhase((p) => ({ ...p, qr: { status: 'scanning', error: error.message } }));
+    }
+  }
+
   async function confirm() {
     const run = ++runRef.current;
     setPhase((p) => ({ ...p, submitting: true, submitError: null }));
     try {
-      let { position } = phase;
-      if (Date.now() - position.acquiredAt > POSITION_MAX_AGE_MS) position = await getCurrentPosition();
-      const { record, verification } = await api(config.endpoint, { method: 'POST', body: toCoordinates(position) });
+      const { record, verification } = await api(config.endpoint, { method: 'POST', body: { presence: phase.presence.token } });
       if (run === runRef.current) setPhase({ name: 'done', record, verification });
     } catch (error) {
       if (run !== runRef.current) return;
-      if (error.data?.verification) setPhase({ name: 'rejected', verification: error.data.verification });
-      else if (SEQUENCE_ERRORS[error.code]) setPhase({ name: 'blocked', code: error.code });
-      else if (error instanceof LocationError) setPhase({ name: 'failed', error });
+      if (error.code === 'PRESENCE_EXPIRED') locate();
+      else if (error.code === 'QR_REQUIRED') {
+        // Turned on while this screen was open.
+        setPhase((p) => ({ ...p, submitting: false, presence: { ...p.presence, qrRequired: true }, qr: null }));
+      } else if (SEQUENCE_ERRORS[error.code]) setPhase({ name: 'blocked', code: error.code });
       else setPhase((p) => ({ ...p, submitting: false, submitError: error.message }));
     }
   }
@@ -123,7 +147,7 @@ function ClockFlow({ action }) {
     content = blockedCode ? (
       <ClockBlocked code={blockedCode} onDone={goHome} />
     ) : (
-      <ClockVerification action={action} phase={phase} onConfirm={confirm} onRetry={locate} onCancel={goHome} />
+      <ClockVerification action={action} phase={phase} onConfirm={confirm} onRetry={locate} onCancel={goHome} onCode={checkCode} />
     );
   }
 
@@ -173,13 +197,106 @@ function distanceCaption(phase, radius) {
   return `${formatDistanceShort(distanceM - radius)} beyond the ${radius} m office radius`;
 }
 
-function ClockVerification({ action, phase, onConfirm, onRetry, onCancel }) {
+/** Step 2, once the location is verified: the office QR code. */
+function QrStep({ action, phase, onCode }) {
+  const verified = phase.qr?.status === 'verified';
+  return (
+    <>
+      <ol className="clock-steps reveal">
+        <li className="clock-step is-done">
+          <CircleCheck aria-hidden="true" />
+          <span>
+            <strong>Location verified</strong>
+            <small>
+              {formatDistanceShort(phase.verification.distanceM)} from the office · {formatTime(phase.presence.at)}
+            </small>
+          </span>
+        </li>
+        <li className={`clock-step ${verified ? 'is-done' : 'is-current'}`}>
+          {verified ? <CircleCheck aria-hidden="true" /> : <QrCode aria-hidden="true" />}
+          <span>
+            <strong>{verified ? 'Office QR verified' : 'Scan the office QR code'}</strong>
+            <small>{verified ? phase.qr.display : 'Shown on the office display'}</small>
+          </span>
+        </li>
+      </ol>
+      {verified ? (
+        <section className="card qr-done pop-in" aria-live="polite">
+          <span className="qr-done__icon">
+            <ShieldCheck aria-hidden="true" />
+          </span>
+          <h2>You’re at the office</h2>
+          <p>
+            Your {ACTIONS[action].noun} time will be <strong>{formatTime(phase.presence.at)}</strong>, when your location was
+            verified.
+          </p>
+        </section>
+      ) : (
+        <OfficeQrScanner onCode={onCode} busy={phase.qr?.status === 'verifying'} message={phase.qr?.error} />
+      )}
+    </>
+  );
+}
+
+function ClockVerification({ action, phase, onConfirm, onRetry, onCancel, onCode }) {
   const { office } = useAuth();
   const config = ACTIONS[action];
   const radius = office.radiusMeters;
   const { tone, title, text } = describe(phase, radius);
   const distance = phase.verification?.distanceM ?? null;
+  const qrStep = phase.name === 'verified' && phase.presence?.qrRequired;
+  const ready = phase.name === 'verified' && (!qrStep || phase.qr?.status === 'verified');
 
+  return (
+    <>
+      {qrStep ? (
+        <QrStep action={action} phase={phase} onCode={onCode} />
+      ) : (
+        <LocationStep phase={phase} tone={tone} title={title} text={text} distance={distance} radius={radius} office={office} />
+      )}
+
+      <div className="clock-actions">
+        {phase.submitError && (
+          <p className="notice notice--error pop-in" role="alert">
+            <TriangleAlert aria-hidden="true" /> {phase.submitError}
+          </p>
+        )}
+        {phase.name === 'locating' ? (
+          <button type="button" className="btn btn--primary btn--block btn--xl" disabled>
+            <LoaderCircle className="spin" aria-hidden="true" /> Verifying location…
+          </button>
+        ) : phase.name === 'verified' ? (
+          <button
+            type="button"
+            className={`btn btn--block btn--xl btn--shine ${action === 'out' ? 'btn--dark' : 'btn--primary btn--glow'}`}
+            onClick={onConfirm}
+            disabled={phase.submitting || !ready}
+          >
+            {phase.submitting ? (
+              <>
+                <LoaderCircle className="spin" aria-hidden="true" /> Recording…
+              </>
+            ) : (
+              <>
+                <config.Icon aria-hidden="true" /> {config.confirm}
+              </>
+            )}
+          </button>
+        ) : (
+          <button type="button" className="btn btn--primary btn--block btn--xl" onClick={onRetry}>
+            <RefreshCw aria-hidden="true" /> Try Again
+          </button>
+        )}
+        <button type="button" className="btn btn--ghost btn--block" onClick={onCancel} disabled={phase.submitting}>
+          Cancel
+        </button>
+      </div>
+    </>
+  );
+}
+
+/** Step 1: the location check, with the radar and the distance from the office. */
+function LocationStep({ phase, tone, title, text, distance, radius, office }) {
   return (
     <>
       <section className="clock-status" aria-live="polite">
@@ -241,43 +358,6 @@ function ClockVerification({ action, phase, onConfirm, onRetry, onCancel }) {
           </div>
         </li>
       </ul>
-
-      <div className="clock-actions">
-        {phase.submitError && (
-          <p className="notice notice--error pop-in" role="alert">
-            <TriangleAlert aria-hidden="true" /> {phase.submitError}
-          </p>
-        )}
-        {phase.name === 'locating' ? (
-          <button type="button" className="btn btn--primary btn--block btn--xl" disabled>
-            <LoaderCircle className="spin" aria-hidden="true" /> Verifying location…
-          </button>
-        ) : phase.name === 'verified' ? (
-          <button
-            type="button"
-            className={`btn btn--block btn--xl btn--shine ${action === 'out' ? 'btn--dark' : 'btn--primary btn--glow'}`}
-            onClick={onConfirm}
-            disabled={phase.submitting}
-          >
-            {phase.submitting ? (
-              <>
-                <LoaderCircle className="spin" aria-hidden="true" /> Recording…
-              </>
-            ) : (
-              <>
-                <config.Icon aria-hidden="true" /> {config.confirm}
-              </>
-            )}
-          </button>
-        ) : (
-          <button type="button" className="btn btn--primary btn--block btn--xl" onClick={onRetry}>
-            <RefreshCw aria-hidden="true" /> Try Again
-          </button>
-        )}
-        <button type="button" className="btn btn--ghost btn--block" onClick={onCancel} disabled={phase.submitting}>
-          Cancel
-        </button>
-      </div>
     </>
   );
 }

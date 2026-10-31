@@ -37,6 +37,8 @@ export function serializeRecord(row) {
     employeeId: row.employee_id,
     source: row.source ?? 'app',
     note: row.note ?? null,
+    checkInQr: row.check_in_qr ?? null,
+    checkOutQr: row.check_out_qr ?? null,
   };
 }
 

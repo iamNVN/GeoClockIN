@@ -11,6 +11,7 @@ rules and reports from a desktop dashboard.
 | --------------------- | -------------------- | ---------------------------------------------------------- |
 | Employee app          | `/`                  | Clock in / out, history, monthly summary, profile          |
 | Admin dashboard       | `/admin`             | Attendance, employees, reports, office and rule settings   |
+| Office QR display     | `qr-display/` (runs at the office) | A signed QR code that changes every second  |
 
 Both apps share one API and one PostgreSQL database, so a change in the dashboard (a new
 employee, a moved office pin, a new grace period) applies to the employee app immediately.
@@ -27,6 +28,7 @@ employee, a moved office pin, a new grace period) applies to the employee app im
 ├── frontend/
 │   ├── employee/           React (Vite) employee mobile web app
 │   └── admin/              React (Vite) admin dashboard, served at /admin
+├── qr-display/             Office display app: signed QR code, new every second
 └── vercel.json             build, routing and security headers
 ```
 
@@ -85,6 +87,7 @@ Browsers only allow geolocation on secure origins. `http://localhost` counts as 
 | ------------------------------------ | ----------------------------------------------------- |
 | `npm run dev`                        | Local database, API, employee app and dashboard with hot reload |
 | `npm run dev:db`                     | Only the local database                               |
+| `npm run display`                    | The office QR display on http://localhost:4100        |
 | `npm run build`                      | Production build of both apps into `dist/`            |
 | `npm test`                           | Backend unit tests                                    |
 | `npm run db:migrate`                 | Create or update database tables (idempotent)         |
@@ -125,6 +128,53 @@ Islamic festival dates can move with the moon sighting; adjust them if DoPT anno
 
 The dashboard works on phones too: tables become stacked cards and dialogs open as bottom
 sheets.
+
+### Office QR code
+
+An optional second check that people are really at the office, on top of their location.
+A computer or tablet at the office shows a QR code that changes every second; with
+**Settings → Office QR → Require the office QR code** on, clocking in or out takes three
+steps:
+
+1. **Location.** The app checks the geofence. When it passes, the server returns a signed
+   *presence proof* holding the time of this check.
+2. **QR scan.** The camera opens and decodes continuously (no photo to take): the moment the
+   office code is in view it is sent to the server, which checks its signature and age.
+   **Clock In / Clock Out** stays disabled until this succeeds.
+3. **Confirm.** The recorded time is the **location check time** from step 1, not the time
+   of the scan or of the tap. The proof is valid for 3 minutes; after that the app checks
+   the location again.
+
+Each code is `GCQ1.<display key id>.<unix time>.<Ed25519 signature>`. The display app
+signs it with its own private key, which is created on first run and never leaves the
+display computer; GeoClockIN stores only the public key. So a code cannot be made without
+the display, even with full access to GeoClockIN, and changing its time breaks the
+signature. A code is accepted for 10 seconds (and up to 5 seconds early, for clock
+differences), so a photo or screenshot sent to someone outside is useless almost at once.
+Every scan, accepted or not, is logged in `attendance_attempts`; the attendance table shows
+*QR* next to the distance and exports have an *Office QR* column.
+
+**Setting up a display**
+
+1. On a computer at the office (Node.js 22+), run `npm run display` in this repository, or
+   copy the `qr-display` folder there and run `npm install` and `npm start`.
+2. It prints a **display key**. Add it in **Settings → Office QR → Office Displays** with a
+   name such as "Reception", and save.
+3. Open `http://localhost:4100` on that computer and click once for full screen. To show
+   it on a tablet instead, start the app with `HOST=0.0.0.0` and open
+   `http://<computer's address>:4100` on the tablet.
+4. Turn on **Require the office QR code** and save.
+
+Optional settings for the display (environment variables or `qr-display/.env`): `PORT`
+(default `4100`), `HOST` (default `127.0.0.1`, this computer only) and `GEOCLOCKIN_URL`
+(for example `https://geoclockin.vercel.app`), which keeps the codes in step with
+GeoClockIN's clock even if the display computer's clock drifts. Keep
+`qr-display/display-key.pem` private (it is ignored by git); deleting it creates a new key,
+which has to be added again.
+
+The QR code makes cheating much harder but not impossible: someone at the office could still
+stream the live code to a colleague who also fakes their GPS position. If codes are rejected
+as expired or "ahead", check the display computer's clock or set `GEOCLOCKIN_URL`.
 
 ### Company logo
 
@@ -212,7 +262,8 @@ have separate cookies.
 
 ## Attendance rules
 
-- **Work date:** the calendar date in the office time zone when the server receives the request.
+- **Work date and time:** the time of the location check that preceded the clock-in or
+  clock-out (in the office time zone), not the time the button was tapped.
 - **Check-in:** one per employee per work date. The server rejects duplicates, and the
   database's unique `(employee_id, work_date)` constraint guarantees it even when two
   requests arrive at the same moment.
@@ -242,7 +293,7 @@ All endpoints are under `/api` and return JSON. Errors look like
 
 | Method | Path                               | Description                                                      |
 | ------ | ---------------------------------- | ---------------------------------------------------------------- |
-| GET    | `/health`                          | Service and database health                                      |
+| GET    | `/health`                          | Service and database health, and the server time                 |
 | POST   | `/auth/login`                      | `{ identifier, password, rememberMe }`. Sets the session cookie  |
 | POST   | `/auth/logout`                     | Clears the session cookie                                        |
 | GET    | `/auth/me`                         | Signed-in employee, office and schedule                          |
@@ -251,9 +302,10 @@ All endpoints are under `/api` and return JSON. Errors look like
 | POST   | `/auth/reset-password`             | `{ token, password }`. Sets the password and ends all sessions   |
 | GET    | `/attendance/overview`             | Today, this week, this month and recent days (home screen)       |
 | GET    | `/attendance/today`                | Today's record, status and allowed next action                   |
-| POST   | `/attendance/verify-location`      | `{ latitude, longitude, accuracy }`. Geofence check only, nothing is stored |
-| POST   | `/attendance/check-in`             | `{ latitude, longitude, accuracy }`                              |
-| POST   | `/attendance/check-out`            | `{ latitude, longitude, accuracy }`                              |
+| POST   | `/attendance/verify-location`      | `{ latitude, longitude, accuracy, action }` (`check_in` / `check_out`). Geofence check; when it passes, `presence: { token, at, qrRequired }` |
+| POST   | `/attendance/verify-qr`            | `{ action, presence, code }`: the scanned office code. Returns an upgraded `presence` |
+| POST   | `/attendance/check-in`             | `{ presence }`. Records the location check time               |
+| POST   | `/attendance/check-out`            | `{ presence }`                                                  |
 | GET    | `/attendance/history?month=YYYY-MM`| Days of the month (newest first) and a monthly summary           |
 
 Attendance endpoints only ever return the signed-in employee's own records.

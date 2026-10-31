@@ -1545,6 +1545,19 @@ input[type='checkbox'] {
   color: var(--amber);
 }
 
+.tag--qr {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.tag--qr svg {
+  width: 11px;
+  height: 11px;
+}
+
 .tag--holiday {
   background: var(--violet-soft);
   color: var(--violet);
@@ -2384,6 +2397,71 @@ input[type='checkbox'] {
   font-weight: 600;
 }
 
+.qr-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.qr-facts li {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--canvas);
+}
+
+.qr-facts svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--brand);
+}
+
+.qr-facts li > span {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.display-form {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.display-row {
+  align-items: center;
+}
+
+.display-row svg {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.display-row code {
+  font-size: 12.5px;
+}
+
+.setup-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  list-style: decimal;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.setup-steps code,
+.display-row code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--canvas);
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+}
+
 .list-rows {
   display: grid;
 }
@@ -2723,6 +2801,7 @@ input[type='checkbox'] {
   .form-grid,
   .form-grid--3,
   .company-grid,
+  .display-form,
   .holiday-form {
     grid-template-columns: 1fr;
   }

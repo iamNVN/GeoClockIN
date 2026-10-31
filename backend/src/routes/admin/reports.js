@@ -228,6 +228,7 @@ function addDailySheet(workbook, rows, schedule) {
       { header: 'Late By (min)', key: 'lateBy', width: 13 },
       { header: 'Check-in Distance (m)', key: 'inDistance', width: 20 },
       { header: 'Check-out Distance (m)', key: 'outDistance', width: 21 },
+      { header: 'Office QR', key: 'qr', width: 14 },
       { header: 'Source', key: 'source', width: 10 },
       { header: 'Note', key: 'note', width: 30 },
     ],

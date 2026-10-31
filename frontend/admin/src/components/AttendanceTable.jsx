@@ -1,4 +1,4 @@
-import { MapPin, MapPinOff, PenLine } from 'lucide-react';
+import { MapPin, MapPinOff, PenLine, QrCode } from 'lucide-react';
 import { formatDistance, formatDuration, formatTime } from '../lib/format.js';
 import { Avatar, StatusPill } from './ui.jsx';
 
@@ -18,6 +18,11 @@ function LocationCell({ record }) {
   return distance ? (
     <span className="location-cell">
       <MapPin aria-hidden="true" /> Inside Office · {distance}
+      {record.checkInQr && (
+        <span className="tag tag--qr" title={`Office QR scanned at ${record.checkInQr}`}>
+          <QrCode aria-hidden="true" /> QR
+        </span>
+      )}
     </span>
   ) : (
     <span className="location-cell location-cell--manual">

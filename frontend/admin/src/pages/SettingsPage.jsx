@@ -7,10 +7,13 @@ import {
   ImageUp,
   LoaderCircle,
   MapPin,
+  Monitor,
   Plus,
+  QrCode,
   Save,
   Settings as SettingsIcon,
   ShieldCheck,
+  Timer,
   Trash2,
   Undo2,
   UserRound,
@@ -31,12 +34,15 @@ const TABS = [
   { id: 'office', label: 'Office Location', Icon: MapPin },
   { id: 'rules', label: 'Attendance Rules', Icon: Clock },
   { id: 'departments', label: 'Departments', Icon: Building2 },
+  { id: 'qr', label: 'Office QR', Icon: QrCode },
   { id: 'account', label: 'Account & Security', Icon: ShieldCheck },
 ];
 
 /** Which tab a server-side validation field belongs to. */
 const tabForField = (field = '') =>
-  field.startsWith('office')
+  field.startsWith('qr')
+    ? 'qr'
+    : field.startsWith('office')
     ? 'office'
     : field.startsWith('schedule')
       ? 'rules'
@@ -159,6 +165,7 @@ export default function SettingsPage() {
           {tab === 'office' && <OfficeTab draft={draft} update={update} error={error} />}
           {tab === 'rules' && <RulesTab draft={draft} update={update} error={error} presets={saved?.holidayPresets ?? []} />}
           {tab === 'departments' && <DepartmentsTab draft={draft} update={update} />}
+          {tab === 'qr' && <QrTab draft={draft} update={update} error={error} />}
           {saved?.updatedAt && (
             <p className="muted settings-meta">
               Last saved {new Date(saved.updatedAt).toLocaleString()} {saved.updatedBy && saved.updatedBy !== 'seed' ? `by ${saved.updatedBy}` : ''}
@@ -626,6 +633,135 @@ function DepartmentsTab({ draft, update }) {
         ))}
       </ul>
     </Section>
+  );
+}
+
+const DISPLAY_KEY_RE = /^[A-Za-z0-9_-]{43}$/;
+const shortKey = (key) => `${key.slice(0, 6)}…${key.slice(-4)}`;
+
+const QR_FACTS = [
+  { Icon: MapPin, title: 'Location first', text: 'The QR scan unlocks Clock In only after the location check passes. The recorded time is the location check.' },
+  { Icon: Timer, title: 'Changes every second', text: 'Each code works for 10 seconds, so a photo or screenshot of it is useless almost at once.' },
+  { Icon: ShieldCheck, title: 'Digitally signed', text: 'Codes are signed with the display’s private key. GeoClockIN only keeps the public key, so codes can’t be forged.' },
+];
+
+function QrTab({ draft, update, error }) {
+  const { qr } = draft;
+  const [display, setDisplay] = useState({ name: '', publicKey: '' });
+  const key = display.publicKey.trim();
+  const keyError =
+    key && !DISPLAY_KEY_RE.test(key)
+      ? 'Paste the 43-character key exactly as the display app prints it.'
+      : qr.displays.some((d) => d.publicKey === key)
+        ? 'This display is already added.'
+        : null;
+  const displaysError = error?.field?.startsWith('qr.displays') ? error.message : null;
+
+  function addDisplay(event) {
+    event.preventDefault();
+    if (!display.name.trim() || !key || keyError) return;
+    update('qr', { displays: [...qr.displays, { name: display.name.trim(), publicKey: key }] });
+    setDisplay({ name: '', publicKey: '' });
+  }
+
+  function removeDisplay(publicKey) {
+    const displays = qr.displays.filter((d) => d.publicKey !== publicKey);
+    // Without a display nobody could clock in, so the requirement goes too.
+    update('qr', { displays, required: displays.length > 0 && qr.required });
+  }
+
+  return (
+    <>
+      <Section title="Office QR Code" subtitle="A second check that people are really at the office, on top of their location.">
+        <label className="switch-row">
+          <input
+            type="checkbox"
+            className="switch"
+            checked={qr.required}
+            disabled={!qr.required && qr.displays.length === 0}
+            onChange={(e) => update('qr', { required: e.target.checked })}
+          />
+          <span>
+            <strong>Require the office QR code to clock in and out</strong>
+            <span className="muted">
+              {qr.displays.length === 0
+                ? 'Add an office display below to turn this on.'
+                : 'After the location check, employees scan the code on the office display. Clock In stays disabled until the scan succeeds.'}
+            </span>
+          </span>
+        </label>
+        {errorFor(error, 'qr.required') && <p className="field-error">{errorFor(error, 'qr.required')}</p>}
+        <ul className="qr-facts">
+          {QR_FACTS.map(({ Icon, title, text }) => (
+            <li key={title}>
+              <Icon aria-hidden="true" />
+              <span>
+                <strong>{title}</strong>
+                <span className="muted">{text}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <Section title="Office Displays" subtitle="Computers or tablets showing the code. Each one signs codes with its own key.">
+        <form className="display-form" onSubmit={addDisplay}>
+          <span className="input">
+            <Monitor aria-hidden="true" />
+            <input value={display.name} onChange={(e) => setDisplay({ ...display, name: e.target.value })} placeholder="Name, e.g. Reception" maxLength={60} aria-label="Display name" />
+          </span>
+          <span className={`input${keyError ? ' is-invalid' : ''}`}>
+            <input
+              value={display.publicKey}
+              onChange={(e) => setDisplay({ ...display, publicKey: e.target.value })}
+              placeholder="Display key from the display app"
+              aria-label="Display key"
+              spellCheck="false"
+              autoComplete="off"
+            />
+          </span>
+          <button type="submit" className="btn btn--secondary" disabled={!display.name.trim() || !key || Boolean(keyError)}>
+            <Plus aria-hidden="true" /> Add Display
+          </button>
+        </form>
+        {(keyError || displaysError) && <p className="field-error">{keyError || displaysError}</p>}
+        {qr.displays.length === 0 ? (
+          <p className="muted">No displays added yet.</p>
+        ) : (
+          <ul className="list-rows">
+            {qr.displays.map((d) => (
+              <li key={d.publicKey}>
+                <span className="list-rows__main display-row">
+                  <Monitor aria-hidden="true" />
+                  <strong>{d.name}</strong>
+                  <code className="muted">{shortKey(d.publicKey)}</code>
+                </span>
+                <button type="button" className="icon-btn icon-btn--danger" onClick={() => removeDisplay(d.publicKey)} aria-label={`Remove ${d.name}`}>
+                  <Trash2 aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title="Set Up a Display" subtitle="Any computer at the office with Node.js 22 can run it; a tablet can show its page.">
+        <ol className="setup-steps">
+          <li>
+            On the office computer, run <code>npm run display</code> in the project folder (or copy the <code>qr-display</code> folder
+            there and run <code>npm install</code> and <code>npm start</code>).
+          </li>
+          <li>
+            Copy the <strong>display key</strong> it prints and add it above, with a name such as “Reception”.
+          </li>
+          <li>
+            Open <code>http://localhost:4100</code> on that computer and click once for full screen. For a tablet, start the app
+            with <code>HOST=0.0.0.0</code> and open the computer’s network address on the tablet.
+          </li>
+          <li>Save, then turn on “Require the office QR code”.</li>
+        </ol>
+      </Section>
+    </>
   );
 }
 

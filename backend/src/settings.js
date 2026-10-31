@@ -56,6 +56,7 @@ export function sessionPayload(employee, settings) {
       address: office.address,
       radiusMeters: office.radiusMeters,
       maxAccuracyMeters: MAX_ACCURACY_METERS,
+      qrRequired: settings.qr.required,
     },
     schedule: {
       timezone: schedule.timezone,

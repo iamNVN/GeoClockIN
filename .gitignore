@@ -8,6 +8,9 @@ dist/
 # Local development database (npm run dev)
 .local-db/
 
+# QR display private key (stays on the display computer)
+display-key.pem
+
 # Environment
 .env
 .env.*

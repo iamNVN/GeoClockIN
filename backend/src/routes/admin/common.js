@@ -49,6 +49,7 @@ export const ATTENDANCE_COLUMNS = [
   { header: 'Status', key: 'status', width: 16 },
   { header: 'Late', key: 'late', width: 8 },
   { header: 'Check-in Distance (m)', key: 'distance', width: 20 },
+  { header: 'Office QR', key: 'qr', width: 14 },
   { header: 'Source', key: 'source', width: 10 },
   { header: 'Note', key: 'note', width: 30 },
 ];
@@ -82,6 +83,7 @@ export function attendanceRow({ date, employee, record, status }, timezone) {
     status: STATUS_LABELS[status] ?? status,
     late: record?.isLate ? 'Yes' : '',
     distance: record?.checkInDistanceM ?? '',
+    qr: record?.checkInQr ?? '',
     source: record?.source ?? '',
     note: record?.note ?? '',
   };

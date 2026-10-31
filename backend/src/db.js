@@ -70,6 +70,9 @@ ALTER TABLE attendance ALTER COLUMN check_in_accuracy_m DROP NOT NULL;
 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'app';
 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS note TEXT;
 ALTER TABLE attendance ADD COLUMN IF NOT EXISTS updated_by TEXT;
+-- Name of the office display whose QR code was scanned, when one was.
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS check_in_qr TEXT;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS check_out_qr TEXT;
 CREATE INDEX IF NOT EXISTS attendance_work_date_idx ON attendance (work_date);
 
 -- Every check-in / check-out attempt, accepted or rejected, for auditing.
