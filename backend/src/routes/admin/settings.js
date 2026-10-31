@@ -2,6 +2,7 @@ import express, { Router } from 'express';
 import { audit } from '../../audit.js';
 import { deleteLogo, logoVersion, MAX_LOGO_BYTES, saveLogo } from '../../branding.js';
 import { query } from '../../db.js';
+import { approveDisplay, removeDisplay } from '../../displays.js';
 import { HOLIDAY_PRESETS } from '../../lib/holidayPresets.js';
 import { saveSettings, storableSettings } from '../../settings.js';
 
@@ -32,6 +33,20 @@ router.put('/', async (req, res) => {
     after: saved,
   });
   res.json({ settings: saved, updatedAt: new Date().toISOString(), updatedBy: req.admin.email });
+});
+
+// Office QR displays: pair the display showing `code`, or remove one. Both
+// take effect at once (not with Save Changes).
+router.post('/displays', async (req, res) => {
+  const { settings, display } = await approveDisplay(req.body?.code, req.body?.name, req.admin.email);
+  await audit(null, req.admin, 'display.add', 'settings', display.id, { name: display.name });
+  res.status(201).json({ settings: storableSettings(settings), display });
+});
+
+router.delete('/displays/:id', async (req, res) => {
+  const { settings, display } = await removeDisplay(req.params.id, req.admin.email);
+  await audit(null, req.admin, 'display.remove', 'settings', display.id, { name: display.name });
+  res.json({ settings: storableSettings(settings) });
 });
 
 // Company logo: the image file is the raw request body.

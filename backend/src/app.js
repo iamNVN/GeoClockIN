@@ -5,6 +5,7 @@ import { HttpError } from './errors.js';
 import adminRoutes from './routes/admin/index.js';
 import attendanceRoutes from './routes/attendance.js';
 import brandingRoutes from './routes/branding.js';
+import displayRoutes from './routes/displays.js';
 import authRoutes from './routes/auth.js';
 
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/branding', brandingRoutes);
+app.use('/api/displays', displayRoutes);
 
 app.use('/api', () => {
   throw new HttpError(404, 'NOT_FOUND', 'This API endpoint does not exist.');

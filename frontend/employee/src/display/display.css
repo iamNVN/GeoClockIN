@@ -1,0 +1,122 @@
+/* Office display (/display): white, full screen, nothing but what is needed. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: #fff;
+  color: #0f172a;
+  font-family: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.display {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 4vmin;
+}
+
+.display__panel {
+  display: none;
+  justify-items: center;
+  gap: 2.4vmin;
+  max-width: 900px;
+  text-align: center;
+}
+
+.display[data-state='starting'] .display__panel--starting,
+.display[data-state='pairing'] .display__panel--pairing,
+.display[data-state='live'] .display__panel--live,
+.display[data-state='failed'] .display__panel--failed {
+  display: grid;
+}
+
+.display[data-state='live'] {
+  cursor: none;
+}
+
+.display__logo {
+  width: auto;
+  height: max(80px, 16vmin);
+  object-fit: contain;
+}
+
+h1 {
+  margin: 1vmin 0 0;
+  font-size: max(22px, 4.6vmin);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.display__code {
+  margin: 0;
+  padding: 1.6vmin 4vmin;
+  border: 2px dashed #c6ecd9;
+  border-radius: 2vmin;
+  background: #f1faf6;
+  color: #075c3d;
+  font-size: max(40px, 11vmin);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+
+.display__note {
+  max-width: 34em;
+  margin: 0;
+  color: #334155;
+  font-size: max(16px, 2.8vmin);
+  line-height: 1.5;
+}
+
+.display__small {
+  max-width: 40em;
+  margin: 0;
+  color: #64748b;
+  font-size: max(13px, 2vmin);
+}
+
+.display__qr {
+  width: min(78vmin, 90vw);
+  aspect-ratio: 1;
+}
+
+.display__qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.display__caption {
+  margin: 0;
+  color: #64748b;
+  font-size: max(14px, 2.4vmin);
+}
+
+.display__offline {
+  position: fixed;
+  top: 2vmin;
+  left: 50%;
+  margin: 0;
+  padding: 1vmin 2.4vmin;
+  border-radius: 999px;
+  background: #feeceb;
+  color: #c42f2f;
+  font-size: max(13px, 2vmin);
+  font-weight: 600;
+  transform: translateX(-50%);
+}
+
+.display__offline[hidden] {
+  display: none;
+}

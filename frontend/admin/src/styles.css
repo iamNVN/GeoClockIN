@@ -1931,6 +1931,10 @@ input[type='checkbox'] {
   box-shadow: var(--shadow-lg);
 }
 
+.modal--sm {
+  width: min(420px, calc(100% - 32px));
+}
+
 .modal--lg {
   width: min(720px, calc(100% - 32px));
 }
@@ -2440,26 +2444,54 @@ input[type='checkbox'] {
   color: var(--muted);
 }
 
-.display-row code {
-  font-size: 12.5px;
-}
-
-.setup-steps {
+.pair-steps {
   display: grid;
-  gap: 8px;
+  gap: 16px;
   margin: 0;
   padding-left: 20px;
   list-style: decimal;
-  font-size: 13.5px;
-  line-height: 1.55;
 }
 
-.setup-steps code,
-.display-row code {
-  padding: 1px 6px;
-  border-radius: 6px;
+.pair-steps li {
+  display: grid;
+  gap: 8px;
+}
+
+.pair-steps li::marker {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.pair-steps__label {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.display-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--canvas);
+}
+
+.display-link a {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--brand-strong);
   font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.input--code input {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .list-rows {

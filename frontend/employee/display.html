@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <title>GeoClockIN · Office Display</title>
+  </head>
+  <body>
+    <main class="display" data-state="starting">
+      <section class="display__panel display__panel--starting">
+        <img class="display__logo" src="/api/branding/logo" alt="GeoClockIN" onerror="this.onerror=null;this.src='/brand/logo.webp'" />
+        <p class="display__note">Starting…</p>
+      </section>
+
+      <section class="display__panel display__panel--pairing">
+        <img class="display__logo" src="/api/branding/logo" alt="GeoClockIN" onerror="this.onerror=null;this.src='/brand/logo.webp'" />
+        <h1>Pair this display</h1>
+        <p class="display__code" data-code>····-····</p>
+        <p class="display__note">
+          In the GeoClockIN dashboard, open <strong>Settings → Office QR</strong> and enter this code.
+        </p>
+        <p class="display__small">
+          This screen shows the office QR code only after an admin pairs it. A new code appears every 15 minutes.
+        </p>
+      </section>
+
+      <section class="display__panel display__panel--live">
+        <div class="display__qr" data-qr role="img" aria-label="Office QR code"></div>
+        <p class="display__caption"><span data-name></span> · Scan in GeoClockIN to clock in or out</p>
+      </section>
+
+      <section class="display__panel display__panel--failed">
+        <img class="display__logo" src="/brand/logo.webp" alt="GeoClockIN" />
+        <p class="display__note" data-error></p>
+      </section>
+
+      <p class="display__offline" data-offline hidden>Can’t reach GeoClockIN. Retrying…</p>
+    </main>
+    <script type="module" src="/src/display/display.js"></script>
+  </body>
+</html>

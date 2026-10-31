@@ -8,6 +8,7 @@
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/admin/(.*)", "destination": "/admin/index.html" },
+    { "source": "/display", "destination": "/display.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

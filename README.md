@@ -11,7 +11,7 @@ rules and reports from a desktop dashboard.
 | --------------------- | -------------------- | ---------------------------------------------------------- |
 | Employee app          | `/`                  | Clock in / out, history, monthly summary, profile          |
 | Admin dashboard       | `/admin`             | Attendance, employees, reports, office and rule settings   |
-| Office QR display     | `qr-display/` (runs at the office) | A signed QR code that changes every second  |
+| Office QR display     | `/display`           | Opened on an office screen: a signed QR code, new every second |
 
 Both apps share one API and one PostgreSQL database, so a change in the dashboard (a new
 employee, a moved office pin, a new grace period) applies to the employee app immediately.
@@ -28,7 +28,6 @@ employee, a moved office pin, a new grace period) applies to the employee app im
 ├── frontend/
 │   ├── employee/           React (Vite) employee mobile web app
 │   └── admin/              React (Vite) admin dashboard, served at /admin
-├── qr-display/             Office display app: signed QR code, new every second
 └── vercel.json             build, routing and security headers
 ```
 
@@ -87,7 +86,6 @@ Browsers only allow geolocation on secure origins. `http://localhost` counts as 
 | ------------------------------------ | ----------------------------------------------------- |
 | `npm run dev`                        | Local database, API, employee app and dashboard with hot reload |
 | `npm run dev:db`                     | Only the local database                               |
-| `npm run display`                    | The office QR display on http://localhost:4100        |
 | `npm run build`                      | Production build of both apps into `dist/`            |
 | `npm test`                           | Backend unit tests                                    |
 | `npm run db:migrate`                 | Create or update database tables (idempotent)         |
@@ -145,36 +143,38 @@ steps:
    of the scan or of the tap. The proof is valid for 3 minutes; after that the app checks
    the location again.
 
-Each code is `GCQ1.<display key id>.<unix time>.<Ed25519 signature>`. The display app
-signs it with its own private key, which is created on first run and never leaves the
-display computer; GeoClockIN stores only the public key. So a code cannot be made without
-the display, even with full access to GeoClockIN, and changing its time breaks the
-signature. A code is accepted for 10 seconds (and up to 5 seconds early, for clock
-differences), so a photo or screenshot sent to someone outside is useless almost at once.
-Every scan, accepted or not, is logged in `attendance_attempts`; the attendance table shows
-*QR* next to the distance and exports have an *Office QR* column.
+**Setting up a display** (nothing to install)
 
-**Setting up a display**
+1. On the office computer or tablet, open **`https://<your-app>/display`** (locally
+   `http://localhost:5173/display`) and click once for full screen. The link is also in
+   **Settings → Office QR**, with a Copy button.
+2. The screen shows a pairing code such as `K7QM-9XP2`. In **Settings → Office QR**, enter it
+   with a name such as "Reception" and click **Pair Display**. Within a few seconds the
+   screen switches to the QR code.
+3. Turn on **Require the office QR code** and save.
 
-1. On a computer at the office (Node.js 22+), run `npm run display` in this repository, or
-   copy the `qr-display` folder there and run `npm install` and `npm start`.
-2. It prints a **display key**. Add it in **Settings → Office QR → Office Displays** with a
-   name such as "Reception", and save.
-3. Open `http://localhost:4100` on that computer and click once for full screen. To show
-   it on a tablet instead, start the app with `HOST=0.0.0.0` and open
-   `http://<computer's address>:4100` on the tablet.
-4. Turn on **Require the office QR code** and save.
+To retire a screen, remove it in the same place: its codes stop working at once, and the
+screen goes back to showing a pairing code.
 
-Optional settings for the display (environment variables or `qr-display/.env`): `PORT`
-(default `4100`), `HOST` (default `127.0.0.1`, this computer only) and `GEOCLOCKIN_URL`
-(for example `https://geoclockin.vercel.app`), which keeps the codes in step with
-GeoClockIN's clock even if the display computer's clock drifts. Keep
-`qr-display/display-key.pem` private (it is ignored by git); deleting it creates a new key,
-which has to be added again.
+**Why codes can't be faked**
 
-The QR code makes cheating much harder but not impossible: someone at the office could still
-stream the live code to a colleague who also fakes their GPS position. If codes are rejected
-as expired or "ahead", check the display computer's clock or set `GEOCLOCKIN_URL`.
+- The first time a browser opens `/display`, it creates its own ECDSA P-256 key pair. The
+  private key is created *non-extractable* and kept in that browser's storage: the page can
+  sign with it, but nobody can copy it out. GeoClockIN only stores the public keys of the
+  displays an admin paired.
+- Each code is `GCQ1.<display key id>.<unix time>.<signature>`. Changing the time breaks the
+  signature; a code from a screen that wasn't paired is rejected. So an employee who opens the
+  link at home only ever sees a pairing code, and nothing it could produce is accepted.
+- A code is accepted for 5 seconds (and up to 2 seconds early, for clock differences; the
+  page keeps its clock in step with the server), so a photo or screenshot sent to someone
+  outside is useless almost at once.
+- Every scan, accepted or not, is logged in `attendance_attempts`; the attendance table shows
+  *QR* next to the distance, and exports have an *Office QR* column.
+
+Clearing the display browser's site data (or using a private window) creates a new key, so
+the screen has to be paired again. The QR code makes cheating much harder but not
+impossible: someone at the office could still stream the live code to a colleague who is
+also faking their GPS position.
 
 ### Company logo
 
@@ -306,6 +306,7 @@ All endpoints are under `/api` and return JSON. Errors look like
 | POST   | `/attendance/verify-qr`            | `{ action, presence, code }`: the scanned office code. Returns an upgraded `presence` |
 | POST   | `/attendance/check-in`             | `{ presence }`. Records the location check time               |
 | POST   | `/attendance/check-out`            | `{ presence }`                                                  |
+| POST   | `/displays/status`                 | `{ publicKey }` from the display page: `approved` (with its name) or `pending` with a pairing code |
 | GET    | `/attendance/history?month=YYYY-MM`| Days of the month (newest first) and a monthly summary           |
 
 Attendance endpoints only ever return the signed-in employee's own records.
@@ -331,6 +332,8 @@ Attendance endpoints only ever return the signed-in employee's own records.
 | GET      | `/reports/daily?from=&to=&department=&employee=` | Employee daily rows (first 5,000; the export has all) |
 | GET      | `/reports/export?…&type=`              | Excel workbook (`summary`, `department`, `employee`, `daily`, `late`, `absent`, `not_checked_out`) |
 | GET/PUT  | `/settings`                            | Organisation settings                                   |
+| POST     | `/settings/displays`                   | `{ code, name }`: pair the office display showing `code` |
+| DELETE   | `/settings/displays/:id`               | Remove an office display; its codes stop working        |
 
 ## Security and privacy
 

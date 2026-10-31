@@ -7,8 +7,7 @@
   "workspaces": [
     "backend",
     "frontend/employee",
-    "frontend/admin",
-    "qr-display"
+    "frontend/admin"
   ],
   "engines": {
     "node": ">=22"
@@ -19,7 +18,6 @@
     "dev:api": "npm run dev -w backend",
     "dev:web": "npm run dev -w frontend/employee",
     "dev:admin": "npm run dev -w frontend/admin",
-    "display": "npm start -w qr-display",
     "build": "npm run build -w frontend/employee && npm run build -w frontend/admin",
     "test": "npm test -w backend",
     "db:migrate": "npm run db:migrate -w backend",

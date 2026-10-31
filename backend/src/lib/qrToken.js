@@ -1,26 +1,26 @@
-// Office display QR codes. The display app (qr-display/) shows a new code every
+// Office display QR codes. The display page (/display) shows a new code every
 // second: `GCQ1.<keyId>.<unix seconds>.<signature>`, where the signature is
-// Ed25519 over `GCQ1.<keyId>.<unix seconds>` made with the display's private
-// key. GeoClockIN only stores the public key, so codes cannot be forged from
-// the server side either, and a code is only accepted for a few seconds, so a
-// photo of it is useless.
+// ECDSA P-256 / SHA-256 over `GCQ1.<keyId>.<unix seconds>`, made with a key
+// that the display's browser created and cannot export. GeoClockIN only stores
+// the public keys of displays an admin approved, so codes cannot be made
+// anywhere else, and a code is only accepted for a few seconds, so a photo of
+// it is useless.
 import { createHash, createPublicKey, verify } from 'node:crypto';
 
 export const QR_PREFIX = 'GCQ1';
-// Accepted age of a code: covers scanning, the request and small clock
-// differences between the display and the server.
-export const QR_MAX_AGE_SECONDS = 10;
-export const QR_MAX_FUTURE_SECONDS = 5;
+// Accepted age of a code: the second it is shown, scanning, the request and a
+// small clock difference (displays keep their clock in step with the server).
+export const QR_MAX_AGE_SECONDS = 5;
+export const QR_MAX_FUTURE_SECONDS = 2;
 
-// DER header of an Ed25519 SubjectPublicKeyInfo; the 32 raw key bytes follow.
-const ED25519_SPKI_HEADER = Buffer.from('302a300506032b6570032100', 'hex');
-const KEY_RE = /^[A-Za-z0-9_-]{43}$/;
+const KEY_RE = /^[A-Za-z0-9_-]{100,140}$/;
 
-/** The display's raw public key (base64url, 43 chars) as a KeyObject, or null if invalid. */
+/** A display's public key (SPKI, base64url) as a KeyObject, or null unless it is a P-256 key. */
 export function publicKeyFrom(raw) {
   if (typeof raw !== 'string' || !KEY_RE.test(raw)) return null;
   try {
-    return createPublicKey({ key: Buffer.concat([ED25519_SPKI_HEADER, Buffer.from(raw, 'base64url')]), format: 'der', type: 'spki' });
+    const key = createPublicKey({ key: Buffer.from(raw, 'base64url'), format: 'der', type: 'spki' });
+    return key.asymmetricKeyType === 'ec' && key.asymmetricKeyDetails?.namedCurve === 'prime256v1' ? key : null;
   } catch {
     return null;
   }
@@ -30,7 +30,7 @@ export function publicKeyFrom(raw) {
 export const keyIdFor = (raw) => createHash('sha256').update(Buffer.from(raw, 'base64url')).digest('base64url').slice(0, 8);
 
 /**
- * Checks a scanned code against the registered displays ([{ id, name, publicKey }]).
+ * Checks a scanned code against the approved displays ([{ id, name, publicKey }]).
  * Returns { ok: true, display, ageSeconds } or { ok: false, code } where code is
  * NOT_OFFICE_QR | UNKNOWN_DISPLAY | INVALID | EXPIRED | AHEAD.
  */
@@ -44,7 +44,11 @@ export function verifyQrToken(token, displays, nowMs = Date.now()) {
 
   const key = publicKeyFrom(display.publicKey);
   const sig = Buffer.from(signature, 'base64url');
-  const signed = key && /^\d{9,11}$/.test(seconds) && sig.length === 64 && verify(null, Buffer.from(`${QR_PREFIX}.${keyId}.${seconds}`), key, sig);
+  const signed =
+    key &&
+    /^\d{9,11}$/.test(seconds) &&
+    sig.length === 64 &&
+    verify('sha256', Buffer.from(`${QR_PREFIX}.${keyId}.${seconds}`), { key, dsaEncoding: 'ieee-p1363' }, sig);
   if (!signed) return { ok: false, code: 'INVALID' };
 
   const ageSeconds = nowMs / 1000 - Number(seconds);

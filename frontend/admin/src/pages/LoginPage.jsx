@@ -4,9 +4,7 @@ import { Link, Navigate, useLocation } from 'react-router';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { AuthLayout } from '../components/AuthLayout.jsx';
 import { CompanyLogo } from '../components/CompanyLogo.jsx';
-
-// The employee app is served at / in production; locally it runs on its own dev server.
-const EMPLOYEE_APP_URL = import.meta.env.VITE_EMPLOYEE_APP_URL ?? (import.meta.env.DEV ? 'http://localhost:5173/' : '/');
+import { EMPLOYEE_APP_URL } from '../lib/links.js';
 
 export default function LoginPage() {
   const { status, login, sessionExpired } = useAuth();

@@ -3,8 +3,10 @@ import {
   CalendarDays,
   Check,
   Clock,
+  Copy,
   Globe,
   ImageUp,
+  KeyRound,
   LoaderCircle,
   MapPin,
   Monitor,
@@ -23,11 +25,13 @@ import { useSearchParams } from 'react-router';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { CompanyLogo } from '../components/CompanyLogo.jsx';
 import { MapPicker } from '../components/MapPicker.jsx';
+import { Modal } from '../components/Modal.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { EmptyState, PageHead, Skeleton } from '../components/ui.jsx';
 import { useApi } from '../hooks/useApi.js';
 import { api } from '../lib/api.js';
 import { formatClock, formatDate, WEEKDAYS } from '../lib/format.js';
+import { employeeAppLink } from '../lib/links.js';
 
 const TABS = [
   { id: 'general', label: 'General', Icon: SettingsIcon },
@@ -86,6 +90,12 @@ export default function SettingsPage() {
 
   /** Updates one section of the draft: update('office', { radiusMeters: 200 }). */
   const update = (section, changes) => setDraft((d) => ({ ...d, [section]: Array.isArray(changes) ? changes : { ...d[section], ...changes } }));
+
+  /** A change saved on its own (office displays): keep it, and any unsaved edits elsewhere. */
+  function applySaved(settings) {
+    setSaved((prev) => ({ ...prev, settings: { ...prev.settings, qr: settings.qr } }));
+    setDraft((d) => ({ ...d, qr: { ...settings.qr, required: settings.qr.displays.length > 0 && d.qr.required } }));
+  }
 
   async function save() {
     setSaving(true);
@@ -165,7 +175,7 @@ export default function SettingsPage() {
           {tab === 'office' && <OfficeTab draft={draft} update={update} error={error} />}
           {tab === 'rules' && <RulesTab draft={draft} update={update} error={error} presets={saved?.holidayPresets ?? []} />}
           {tab === 'departments' && <DepartmentsTab draft={draft} update={update} />}
-          {tab === 'qr' && <QrTab draft={draft} update={update} error={error} />}
+          {tab === 'qr' && <QrTab draft={draft} update={update} onSaved={applySaved} />}
           {saved?.updatedAt && (
             <p className="muted settings-meta">
               Last saved {new Date(saved.updatedAt).toLocaleString()} {saved.updatedBy && saved.updatedBy !== 'seed' ? `by ${saved.updatedBy}` : ''}
@@ -636,38 +646,66 @@ function DepartmentsTab({ draft, update }) {
   );
 }
 
-const DISPLAY_KEY_RE = /^[A-Za-z0-9_-]{43}$/;
-const shortKey = (key) => `${key.slice(0, 6)}…${key.slice(-4)}`;
+const DISPLAY_LINK = employeeAppLink('display');
 
 const QR_FACTS = [
   { Icon: MapPin, title: 'Location first', text: 'The QR scan unlocks Clock In only after the location check passes. The recorded time is the location check.' },
-  { Icon: Timer, title: 'Changes every second', text: 'Each code works for 10 seconds, so a photo or screenshot of it is useless almost at once.' },
-  { Icon: ShieldCheck, title: 'Digitally signed', text: 'Codes are signed with the display’s private key. GeoClockIN only keeps the public key, so codes can’t be forged.' },
+  { Icon: Timer, title: 'Changes every second', text: 'Each code works for 5 seconds, so a photo or screenshot of it is useless almost at once.' },
+  { Icon: ShieldCheck, title: 'Only paired screens', text: 'Each display signs codes with its own key. Opening the link elsewhere only shows a pairing code, and its codes are rejected.' },
 ];
 
-function QrTab({ draft, update, error }) {
-  const { qr } = draft;
-  const [display, setDisplay] = useState({ name: '', publicKey: '' });
-  const key = display.publicKey.trim();
-  const keyError =
-    key && !DISPLAY_KEY_RE.test(key)
-      ? 'Paste the 43-character key exactly as the display app prints it.'
-      : qr.displays.some((d) => d.publicKey === key)
-        ? 'This display is already added.'
-        : null;
-  const displaysError = error?.field?.startsWith('qr.displays') ? error.message : null;
+/** "k7qm9xp2" → "K7QM-9XP2" while typing. */
+const formatPairingCode = (value) => {
+  const code = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  return code.length > 4 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+};
 
-  function addDisplay(event) {
+function QrTab({ draft, update, onSaved }) {
+  const { qr } = draft;
+  const toast = useToast();
+  const [form, setForm] = useState({ name: '', code: '' });
+  const [pairing, setPairing] = useState(false);
+  const [pairError, setPairError] = useState(null);
+  const [removing, setRemoving] = useState(null);
+  const codeComplete = form.code.replace('-', '').length === 8;
+
+  async function pair(event) {
     event.preventDefault();
-    if (!display.name.trim() || !key || keyError) return;
-    update('qr', { displays: [...qr.displays, { name: display.name.trim(), publicKey: key }] });
-    setDisplay({ name: '', publicKey: '' });
+    if (!form.name.trim() || !codeComplete) return;
+    setPairing(true);
+    setPairError(null);
+    try {
+      const { settings, display } = await api('/admin/settings/displays', { method: 'POST', body: { name: form.name, code: form.code } });
+      onSaved(settings);
+      setForm({ name: '', code: '' });
+      toast.success(`${display.name} is paired. It shows the QR code within a few seconds.`);
+    } catch (e) {
+      setPairError(e.message);
+    } finally {
+      setPairing(false);
+    }
   }
 
-  function removeDisplay(publicKey) {
-    const displays = qr.displays.filter((d) => d.publicKey !== publicKey);
-    // Without a display nobody could clock in, so the requirement goes too.
-    update('qr', { displays, required: displays.length > 0 && qr.required });
+  async function remove() {
+    const display = removing;
+    try {
+      const { settings } = await api(`/admin/settings/displays/${display.id}`, { method: 'DELETE' });
+      onSaved(settings);
+      toast.success(`${display.name} removed. Its codes no longer work.`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(DISPLAY_LINK);
+      toast.success('Display link copied.');
+    } catch {
+      toast.error('Couldn’t copy. Select the link and copy it instead.');
+    }
   }
 
   return (
@@ -685,12 +723,11 @@ function QrTab({ draft, update, error }) {
             <strong>Require the office QR code to clock in and out</strong>
             <span className="muted">
               {qr.displays.length === 0
-                ? 'Add an office display below to turn this on.'
+                ? 'Pair an office display below to turn this on.'
                 : 'After the location check, employees scan the code on the office display. Clock In stays disabled until the scan succeeds.'}
             </span>
           </span>
         </label>
-        {errorFor(error, 'qr.required') && <p className="field-error">{errorFor(error, 'qr.required')}</p>}
         <ul className="qr-facts">
           {QR_FACTS.map(({ Icon, title, text }) => (
             <li key={title}>
@@ -704,39 +741,63 @@ function QrTab({ draft, update, error }) {
         </ul>
       </Section>
 
-      <Section title="Office Displays" subtitle="Computers or tablets showing the code. Each one signs codes with its own key.">
-        <form className="display-form" onSubmit={addDisplay}>
-          <span className="input">
-            <Monitor aria-hidden="true" />
-            <input value={display.name} onChange={(e) => setDisplay({ ...display, name: e.target.value })} placeholder="Name, e.g. Reception" maxLength={60} aria-label="Display name" />
-          </span>
-          <span className={`input${keyError ? ' is-invalid' : ''}`}>
-            <input
-              value={display.publicKey}
-              onChange={(e) => setDisplay({ ...display, publicKey: e.target.value })}
-              placeholder="Display key from the display app"
-              aria-label="Display key"
-              spellCheck="false"
-              autoComplete="off"
-            />
-          </span>
-          <button type="submit" className="btn btn--secondary" disabled={!display.name.trim() || !key || Boolean(keyError)}>
-            <Plus aria-hidden="true" /> Add Display
-          </button>
-        </form>
-        {(keyError || displaysError) && <p className="field-error">{keyError || displaysError}</p>}
+      <Section title="Office Displays" subtitle="Computers or tablets at the office that show the code. A screen only works after you pair it here.">
+        <ol className="pair-steps">
+          <li>
+            <span className="pair-steps__label">Open this link on the office computer or tablet, full screen:</span>
+            <span className="display-link">
+              <a href={DISPLAY_LINK} target="_blank" rel="noreferrer">
+                {DISPLAY_LINK}
+              </a>
+              <button type="button" className="btn btn--secondary btn--sm" onClick={copyLink}>
+                <Copy aria-hidden="true" /> Copy
+              </button>
+            </span>
+          </li>
+          <li>
+            <span className="pair-steps__label">Enter the pairing code it shows, and a name for it:</span>
+            <form className="display-form" onSubmit={pair}>
+              <span className="input">
+                <Monitor aria-hidden="true" />
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Name, e.g. Reception"
+                  maxLength={60}
+                  aria-label="Display name"
+                />
+              </span>
+              <span className={`input input--code${pairError ? ' is-invalid' : ''}`}>
+                <KeyRound aria-hidden="true" />
+                <input
+                  value={form.code}
+                  onChange={(e) => setForm({ ...form, code: formatPairingCode(e.target.value) })}
+                  placeholder="ABCD-1234"
+                  aria-label="Pairing code"
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+              </span>
+              <button type="submit" className="btn btn--primary" disabled={pairing || !form.name.trim() || !codeComplete}>
+                {pairing ? <LoaderCircle className="spin" aria-hidden="true" /> : <Plus aria-hidden="true" />} Pair Display
+              </button>
+            </form>
+            {pairError && <p className="field-error">{pairError}</p>}
+          </li>
+        </ol>
+
         {qr.displays.length === 0 ? (
-          <p className="muted">No displays added yet.</p>
+          <p className="muted">No displays paired yet.</p>
         ) : (
           <ul className="list-rows">
             {qr.displays.map((d) => (
-              <li key={d.publicKey}>
+              <li key={d.id}>
                 <span className="list-rows__main display-row">
                   <Monitor aria-hidden="true" />
                   <strong>{d.name}</strong>
-                  <code className="muted">{shortKey(d.publicKey)}</code>
+                  <span className="muted">Paired</span>
                 </span>
-                <button type="button" className="icon-btn icon-btn--danger" onClick={() => removeDisplay(d.publicKey)} aria-label={`Remove ${d.name}`}>
+                <button type="button" className="icon-btn icon-btn--danger" onClick={() => setRemoving(d)} aria-label={`Remove ${d.name}`}>
                   <Trash2 aria-hidden="true" />
                 </button>
               </li>
@@ -745,22 +806,23 @@ function QrTab({ draft, update, error }) {
         )}
       </Section>
 
-      <Section title="Set Up a Display" subtitle="Any computer at the office with Node.js 22 can run it; a tablet can show its page.">
-        <ol className="setup-steps">
-          <li>
-            On the office computer, run <code>npm run display</code> in the project folder (or copy the <code>qr-display</code> folder
-            there and run <code>npm install</code> and <code>npm start</code>).
-          </li>
-          <li>
-            Copy the <strong>display key</strong> it prints and add it above, with a name such as “Reception”.
-          </li>
-          <li>
-            Open <code>http://localhost:4100</code> on that computer and click once for full screen. For a tablet, start the app
-            with <code>HOST=0.0.0.0</code> and open the computer’s network address on the tablet.
-          </li>
-          <li>Save, then turn on “Require the office QR code”.</li>
-        </ol>
-      </Section>
+      <Modal
+        open={Boolean(removing)}
+        title={`Remove ${removing?.name ?? 'display'}?`}
+        subtitle="Codes on that screen stop working at once. To use it again, open the link there and pair it again."
+        onClose={() => setRemoving(null)}
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="btn btn--secondary" onClick={() => setRemoving(null)}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn--danger" onClick={remove}>
+              <Trash2 aria-hidden="true" /> Remove
+            </button>
+          </>
+        }
+      />
     </>
   );
 }

@@ -4,16 +4,17 @@ import { describe, it } from 'node:test';
 import seed from '../config/geoclockin.config.js';
 import { keyIdFor, publicKeyFrom, QR_MAX_AGE_SECONDS, verifyQrToken } from '../src/lib/qrToken.js';
 import { normalizeSettings } from '../src/lib/settingsSchema.js';
+import { normalizePairingCode } from '../src/displays.js';
 import { issuePresence, readPresence } from '../src/presence.js';
 
-/** A display key pair and a code signer, as the qr-display app makes them. */
+/** A display key pair and a code signer, as the /display page makes them (WebCrypto ECDSA P-256). */
 function makeDisplay(name = 'Reception') {
-  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
-  const raw = publicKey.export({ format: 'jwk' }).x; // 32 bytes, base64url
+  const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const raw = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const display = { id: keyIdFor(raw), name, publicKey: raw };
   const code = (seconds) => {
     const message = `GCQ1.${display.id}.${seconds}`;
-    return `${message}.${sign(null, Buffer.from(message), privateKey).toString('base64url')}`;
+    return `${message}.${sign('sha256', Buffer.from(message), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url')}`;
   };
   return { display, code };
 }
@@ -56,10 +57,13 @@ describe('verifyQrToken', () => {
     assert.equal(verifyQrToken(null, [reception.display], NOW).code, 'NOT_OFFICE_QR');
   });
 
-  it('only takes 32-byte Ed25519 public keys', () => {
+  it('only takes P-256 public keys', () => {
     assert.ok(publicKeyFrom(reception.display.publicKey));
     assert.equal(publicKeyFrom('not-a-key'), null);
-    assert.equal(publicKeyFrom(Buffer.alloc(31).toString('base64url')), null);
+    const ed25519 = generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+    assert.equal(publicKeyFrom(ed25519), null);
+    const p384 = generateKeyPairSync('ec', { namedCurve: 'P-384' }).publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+    assert.equal(publicKeyFrom(p384), null);
   });
 });
 
@@ -105,5 +109,12 @@ describe('presence proof', () => {
     const expired = issuePresence({ employeeId: 'EMP001', action: 'check_in', at, verification, expiresAt: Math.floor(Date.now() / 1000) - 1 });
     assert.throws(() => readPresence(expired, 'EMP001', 'check_in'), { code: 'PRESENCE_EXPIRED' });
     assert.throws(() => readPresence(`${token.slice(0, -2)}xx`, 'EMP001', 'check_in'), { code: 'PRESENCE_EXPIRED' });
+  });
+});
+
+describe('display pairing codes', () => {
+  it('are read without case, spaces or dashes', () => {
+    assert.equal(normalizePairingCode(' k7qm-9xp2 '), 'K7QM9XP2');
+    assert.equal(normalizePairingCode(null), '');
   });
 });

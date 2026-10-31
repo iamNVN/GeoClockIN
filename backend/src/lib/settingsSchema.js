@@ -87,7 +87,7 @@ export function normalizeSettings(raw = {}) {
   const displays = (qr.displays ?? []).map((d, i) => {
     const publicKey = typeof d?.publicKey === 'string' ? d.publicKey.trim() : '';
     if (!publicKeyFrom(publicKey)) {
-      throw new SettingsError(`qr.displays.${i}.publicKey`, 'The display key is not valid. Copy it exactly as the display app prints it.');
+      throw new SettingsError(`qr.displays.${i}.publicKey`, 'The display key is not valid. Pair the display again.');
     }
     return { id: keyIdFor(publicKey), name: text(d.name, `qr.displays.${i}.name`, { required: true, max: 60 }), publicKey };
   });

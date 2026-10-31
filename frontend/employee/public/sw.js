@@ -6,7 +6,8 @@
 // - /assets/* (hashed by Vite) and /brand/* images, icons: cache first.
 // - /api/branding/logo: served from cache, refreshed in the background.
 // - Rest of /api/*: never cached — attendance must always reach the server.
-// - /admin/*: left alone — the admin dashboard is a separate app.
+// - /admin/* and /display: left alone — separate pages (the dashboard and the
+//   office QR display).
 //
 // Bump VERSION when files in /brand change (they keep the same URL).
 const VERSION = 'v3';
@@ -43,7 +44,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(staleWhileRevalidate(event));
     return;
   }
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) return;
+  if (
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/display')
+  ) {
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request));

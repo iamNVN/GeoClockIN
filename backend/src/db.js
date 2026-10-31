@@ -120,6 +120,14 @@ CREATE TABLE IF NOT EXISTS password_resets (
 );
 CREATE INDEX IF NOT EXISTS password_resets_subject_idx
   ON password_resets (role, subject_id, created_at DESC);
+
+-- Office QR displays waiting for an admin to enter the pairing code they show.
+CREATE TABLE IF NOT EXISTS display_pairings (
+  public_key  TEXT        PRIMARY KEY,
+  code        TEXT        NOT NULL UNIQUE,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;
 
 // Arbitrary constant identifying the schema-migration advisory lock.
