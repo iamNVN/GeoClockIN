@@ -5,6 +5,9 @@ node_modules/
 dist/
 .vercel/
 
+# Local development database (npm run dev)
+.local-db/
+
 # Environment
 .env
 .env.*

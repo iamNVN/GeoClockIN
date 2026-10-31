@@ -35,25 +35,28 @@ employee, a moved office pin, a new grace period) applies to the employee app im
 ### Prerequisites
 
 - Node.js 22 or newer
-- PostgreSQL 14 or newer, either installed locally
-  ([postgresql.org/download](https://www.postgresql.org/download/)) or hosted
-  (for example a free [Neon](https://neon.tech) database)
+
+That's all: `npm run dev` starts a local PostgreSQL for you (no install, no Docker). To use
+your own PostgreSQL 14+ or a hosted one (for example a free [Neon](https://neon.tech)
+database) instead, point `DATABASE_URL` in `backend/.env` at it.
 
 ### Run locally
 
 ```bash
 npm install
 
-# Configure the API
+# Configure the API (the defaults work locally; set a long random JWT_SECRET)
 cp backend/.env.example backend/.env
-#   then edit DATABASE_URL and JWT_SECRET in backend/.env
 
-# Optional: create the tables now (the API also creates them on first use)
-npm run db:migrate
-
-# API on :3001, employee app on http://localhost:5173, dashboard on http://localhost:5174/admin
+# Local database on :54329, API on :3001, employee app on http://localhost:5173,
+# dashboard on http://localhost:5174/admin
 npm run dev
 ```
+
+The local database keeps its data in `backend/.local-db/` (ignored by git), so it survives
+restarts. Delete that folder to start again from the seed data. If a database is already
+listening on port 54329 (for example one left running after the terminal was closed),
+`npm run dev` uses it.
 
 On first start the database is seeded from
 [`backend/config/geoclockin.config.js`](backend/config/geoclockin.config.js) with these
@@ -80,7 +83,8 @@ Browsers only allow geolocation on secure origins. `http://localhost` counts as 
 
 | Command                              | What it does                                          |
 | ------------------------------------ | ----------------------------------------------------- |
-| `npm run dev`                        | API, employee app and dashboard with hot reload       |
+| `npm run dev`                        | Local database, API, employee app and dashboard with hot reload |
+| `npm run dev:db`                     | Only the local database                               |
 | `npm run build`                      | Production build of both apps into `dist/`            |
 | `npm test`                           | Backend unit tests                                    |
 | `npm run db:migrate`                 | Create or update database tables (idempotent)         |

@@ -7,6 +7,7 @@
   "main": "src/app.js",
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/server.js",
+    "dev:db": "node --env-file-if-exists=.env scripts/dev-db.mjs",
     "start": "node --env-file-if-exists=.env src/server.js",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
     "hash-password": "node scripts/hash-password.js",
@@ -20,5 +21,8 @@
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^10.3.1",
     "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "embedded-postgres": "^18.4.0-beta.17"
   }
 }
