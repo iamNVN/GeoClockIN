@@ -78,7 +78,11 @@ Browsers only allow geolocation on secure origins. `http://localhost` counts as 
 - **On your computer:** move the office pin to where you are (Dashboard → Settings → Office
   Location → *My location*), or fake your position in Chrome DevTools → ⋮ → More tools →
   Sensors → Location.
-- **On a phone:** use a Vercel preview deployment (HTTPS) rather than your LAN address.
+- **On a phone:** open an HTTPS tunnel to the dev server, for example
+  `npx localtunnel --port 5173` (or `cloudflared tunnel --url http://localhost:5173`), and open
+  the address it prints. The employee app, the office display (`/display`) and the API all go
+  through it. The dev servers accept `*.loca.lt`, `*.trycloudflare.com` and `*.ngrok-free.app`.
+  A Vercel preview deployment works too.
 
 ### Scripts
 

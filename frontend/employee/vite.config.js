@@ -9,6 +9,10 @@ const apiProxy = {
   },
 };
 
+// Tunnels (npx localtunnel, cloudflared, ngrok) for trying the dev servers on a
+// phone over https: camera and location need a secure address.
+const allowedHosts = ['.loca.lt', '.trycloudflare.com', '.ngrok-free.app'];
+
 // The office QR display (display.html) is served at /display, as on Vercel.
 const displayRoute = {
   name: 'display-route',
@@ -33,6 +37,6 @@ export default defineConfig({
       },
     },
   },
-  server: { port: 5173, proxy: apiProxy },
-  preview: { port: 4173, proxy: apiProxy },
+  server: { port: 5173, proxy: apiProxy, allowedHosts },
+  preview: { port: 4173, proxy: apiProxy, allowedHosts },
 });
