@@ -56,6 +56,14 @@ static const char *NTP_PRIMARY = "pool.ntp.org";
 static const char *NTP_SECONDARY = "time.google.com";
 
 // Codes.
+#ifdef SIMULATOR
+// Wokwi limits its simulated CPU to about 8 MHz, so a code takes seconds to make
+// there, against a fraction of a second on the chip. Leaving it time between codes
+// keeps the simulation running in real time, which the codes' timestamps depend on.
+static const uint32_t CODE_INTERVAL_SECONDS = 8;
+#else
+static const uint32_t CODE_INTERVAL_SECONDS = 1;
+#endif
 static const uint32_t CODE_LIFETIME_SECONDS = 5;
 static const size_t NONCE_BYTES = 9;
 static const size_t SIGNATURE_BYTES = 64;
@@ -82,6 +90,7 @@ static const time_t EARLIEST_VALID_TIME = 1767225600;  // 2026-01-01: anything b
 static const uint8_t RTC_ADDRESS = 0x68;
 
 // BOOT button: a press switches between the setup code and live codes.
+static const uint32_t BUTTON_BOUNCE_MS = 30;
 static const uint32_t HOLD_FEEDBACK_MS = 3000;
 static const uint32_t HOLD_WIFI_MS = 5000;
 static const uint32_t HOLD_ERASE_MS = 15000;
@@ -382,18 +391,26 @@ static void finishClockSync(bool succeeded) {
 }
 
 #ifdef SIMULATOR
-/** How fast the simulation runs matters: codes live 5 seconds of real time. */
-static void reportSimulationSpeed(time_t now) {
-  static time_t previousTime = 0;
-  static uint32_t previousMs = 0;
-  if (previousTime && now > previousTime) {
-    Serial.printf("Clock set by NTP. Simulation speed: %d%% of real time\n", (int)((millis() - previousMs) / 10 / (now - previousTime)));
+// A simulation runs slower than real time when busy, so its clock falls behind
+// between NTP answers while codes must carry real time. The answers show how fast
+// it is running, which gives an estimate of real time. The chip needs none of this.
+static float simulationSpeed = 1.0f;
+static time_t lastNtpTime = 0;
+static uint32_t lastNtpMs = 0;
+
+static void noteNtpAnswer(time_t now) {
+  if (lastNtpTime && now > lastNtpTime) {
+    simulationSpeed = constrain((millis() - lastNtpMs) / 1000.0f / (now - lastNtpTime), 0.1f, 1.0f);
+    Serial.printf("Clock set by NTP. Simulation speed: %d%% of real time\n", (int)(simulationSpeed * 100));
   } else {
     Serial.println("Clock set by NTP.");
   }
-  previousTime = now;
-  previousMs = millis();
+  lastNtpTime = now;
+  lastNtpMs = millis();
 }
+
+/** The estimated real time, `simulatedMs` of simulated time from now. */
+static time_t estimatedRealTime(uint32_t simulatedMs) { return lastNtpTime + (time_t)((millis() - lastNtpMs + simulatedMs) / 1000.0f / simulationSpeed); }
 #endif
 
 /** Moves the clock sync along without ever blocking the codes on screen. */
@@ -406,7 +423,7 @@ static void serviceClockSync() {
     if (now >= EARLIEST_VALID_TIME) {
       clockSet = true;
       if (rtcPresent) writeRtc(now);
-      reportSimulationSpeed(now);
+      noteNtpAnswer(now);
     }
   }
 #endif
@@ -437,7 +454,7 @@ static void serviceClockSync() {
         clockSet = true;
         if (rtcPresent) writeRtc(now);
 #ifdef SIMULATOR
-        reportSimulationSpeed(now);
+        noteNtpAnswer(now);
 #else
         Serial.println("Clock set by NTP.");
 #endif
@@ -531,16 +548,24 @@ static void showSetupScreen() {
 }
 
 static void showCodeFor(time_t now) {
+  static uint32_t lastTookMs = 0;
+  static uint32_t codesShown = 0;
   char code[200];
-#ifdef SIMULATOR
   const uint32_t startedMs = millis();
-#endif
-  if (!buildCode((uint32_t)now, code, sizeof code)) return;
 #ifdef SIMULATOR
-  const uint32_t signedMs = millis();
+  // Making a code takes seconds here, so it is dated for when it reaches the screen.
+  const uint32_t created = (uint32_t)estimatedRealTime(lastTookMs);
+#else
+  const uint32_t created = (uint32_t)now;
 #endif
+  if (!buildCode(created, code, sizeof code)) return;
+  const uint32_t signedMs = millis();
 
   if (!drawQr(code, ESP_QRCODE_ECC_MED, CODE_QR_SCALE)) halt("Code too long");
+  lastTookMs = millis() - startedMs;
+  if (lastTookMs > 900 && CODE_INTERVAL_SECONDS == 1) Serial.printf("Slow: a code took %lu ms; codes will not change every second\n", (unsigned long)lastTookMs);
+  // Worth checking on a new board: this has to stay well under a second.
+  if (codesShown++ % 60 == 0) Serial.printf("Took %lu ms to sign, %lu ms to encode and draw\n", (unsigned long)(signedMs - startedMs), (unsigned long)(lastTookMs - (signedMs - startedMs)));
 
   if (screenStale) {
     char idLine[24];
@@ -557,7 +582,6 @@ static void showCodeFor(time_t now) {
 
 #ifdef SIMULATOR
   Serial.printf("CODE %s\n", code);
-  Serial.printf("Took %lu ms to sign, %lu ms to draw\n", (unsigned long)(signedMs - startedMs), (unsigned long)(millis() - signedMs));
 #endif
 }
 
@@ -579,7 +603,8 @@ static void serviceScreen() {
     return;
   }
   const time_t now = time(nullptr);
-  if (now == lastCodeTime && !screenStale) return;
+  // A clock set backwards shows a new code at once rather than waiting for it to catch up.
+  if (!screenStale && now >= lastCodeTime && now - lastCodeTime < (time_t)CODE_INTERVAL_SECONDS) return;
   if (screenStale) tft.fillScreen(ILI9341_WHITE);
   waitingShown = false;
   lastCodeTime = now;
@@ -596,9 +621,23 @@ static void setMode(Mode next) {
 
 /* ----------------------------------------------------------------- Button */
 
-static bool buttonDown = false;
-static uint32_t buttonDownMs = 0;
+// Noted by an interrupt, because the main loop is busy while it makes a code.
+static volatile bool buttonDown = false;
+static volatile uint32_t buttonDownMs = 0;
+static volatile uint32_t buttonReleasedAfterMs = 0;
 static Hold holdShown = Hold::None;
+
+static void IRAM_ATTR onButtonChange() {
+  const bool down = digitalRead(PIN_BUTTON) == LOW;
+  const uint32_t nowMs = millis();
+  if (down && !buttonDown) {
+    buttonDown = true;
+    buttonDownMs = nowMs;
+  } else if (!down && buttonDown && nowMs - buttonDownMs >= BUTTON_BOUNCE_MS) {
+    buttonDown = false;
+    buttonReleasedAfterMs = nowMs - buttonDownMs;
+  }
+}
 
 static Hold holdFor(uint32_t heldMs) {
   if (heldMs >= HOLD_ERASE_MS) return Hold::Erase;
@@ -618,17 +657,8 @@ static void eraseDisplay() {
 }
 
 static void serviceButton() {
-  const bool down = digitalRead(PIN_BUTTON) == LOW;
-  const uint32_t heldMs = millis() - buttonDownMs;
-
-  if (down && !buttonDown) {
-    buttonDown = true;
-    buttonDownMs = millis();
-    holdShown = Hold::None;
-    return;
-  }
-  if (down) {
-    const Hold hold = holdFor(heldMs);
+  if (buttonDown) {
+    const Hold hold = holdFor(millis() - buttonDownMs);
     if (hold != holdShown) {
       holdShown = hold;
       const char *const cancel[] = {"Keep holding to change the Wi-Fi.", "Let go to cancel."};
@@ -640,10 +670,11 @@ static void serviceButton() {
     }
     return;
   }
-  if (!buttonDown) return;
+  const uint32_t heldMs = buttonReleasedAfterMs;
+  if (heldMs == 0) return;
+  buttonReleasedAfterMs = 0;
+  holdShown = Hold::None;
 
-  buttonDown = false;
-  if (heldMs < 30) return;  // Contact bounce.
   switch (holdFor(heldMs)) {
     case Hold::None:
       setMode(mode == Mode::Setup ? Mode::Live : Mode::Setup);
@@ -694,11 +725,12 @@ void setup() {
   setupClock();
   mode = store.getBool("live", false) ? Mode::Live : Mode::Setup;
   screenStale = true;
+  attachInterrupt(digitalPinToInterrupt(PIN_BUTTON), onButtonChange, CHANGE);
 }
 
 void loop() {
   serviceButton();
   serviceClockSync();
-  if (!buttonDown || holdShown == Hold::None) serviceScreen();
+  if (holdShown == Hold::None) serviceScreen();
   delay(5);
 }
