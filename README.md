@@ -28,6 +28,7 @@ employee, a moved office pin, a new grace period) applies to the employee app im
 ├── frontend/
 │   ├── employee/           React (Vite) employee mobile web app
 │   └── admin/              React (Vite) admin dashboard, served at /admin
+├── firmware/esp32-display/ Office QR display on an ESP32 (see its README)
 └── vercel.json             build, routing and security headers
 ```
 
@@ -134,8 +135,8 @@ sheets.
 ### Office QR code
 
 An optional second check that people are really at the office, on top of their location.
-A computer or tablet at the office shows a QR code that changes every second; with
-**Settings → Office QR → Require the office QR code** on, clocking in or out takes three
+A computer, tablet or ESP32 display at the office shows a QR code that changes every second;
+with **Settings → Office QR → Require the office QR code** on, clocking in or out takes three
 steps:
 
 1. **Location.** The app checks the geofence. When it passes, the server returns a signed
@@ -147,7 +148,7 @@ steps:
    of the scan or of the tap. The proof is valid for 3 minutes; after that the app checks
    the location again.
 
-**Setting up a display** (nothing to install)
+**Setting up a computer or tablet** (nothing to install)
 
 1. On the office computer or tablet, open **`https://<your-app>/display`** (locally
    `http://localhost:5173/display`) and click once for full screen. The link is also in
@@ -160,20 +161,33 @@ steps:
 To retire a screen, remove it in the same place: its codes stop working at once, and the
 screen goes back to showing a pairing code.
 
+**Setting up an ESP32 display**
+
+A small dedicated screen that makes its codes on its own, with no connection to GeoClockIN. See
+[firmware/esp32-display](firmware/esp32-display/README.md) for the parts (about ₹2,000), wiring,
+and how to try it on a simulator without a board. It shows a setup code holding its public key:
+scan or paste that in **Settings → Office QR → ESP32 display**, then press its BOOT button.
+
 **Why codes can't be faked**
 
-- The first time a browser opens `/display`, it creates its own ECDSA P-256 key pair. The
-  private key is created *non-extractable* and kept in that browser's storage: the page can
-  sign with it, but nobody can copy it out. GeoClockIN only stores the public keys of the
-  displays an admin paired.
-- Each code is `GCQ1.<display key id>.<unix time>.<signature>`. Changing the time breaks the
-  signature; a code from a screen that wasn't paired is rejected. So an employee who opens the
-  link at home only ever sees a pairing code, and nothing it could produce is accepted.
-- A code is accepted for 5 seconds (and up to 2 seconds early, for clock differences; the
-  page keeps its clock in step with the server), so a photo or screenshot sent to someone
-  outside is useless almost at once.
+- Every display creates its own ECDSA P-256 key pair and only ever uses the private key to
+  sign. In a browser, the key is created *non-extractable* and kept in that browser's storage.
+  On an ESP32, it is created on the board's hardware random generator and never leaves it.
+  GeoClockIN only stores the public keys of the displays an admin added.
+- Each code is JSON: `{"v":2,"d":"<display id>","n":"<nonce>","iat":<created>,"exp":<expires>,"p":"att","sig":"<signature>"}`.
+  Changing any field breaks the signature; a code from a screen that wasn't added is rejected.
+  So an employee who opens the link at home only ever sees a pairing code, and nothing it could
+  produce is accepted.
+- A code is accepted for 5 seconds (and up to 2 seconds early, for clock differences; a browser
+  display keeps its clock in step with the server, an ESP32 uses NTP), so a photo or screenshot
+  sent to someone outside is useless almost at once.
+- One person can't use the same code twice. A code used by four or more people is logged as
+  `qr_shared` in `attendance_attempts`, as it was probably forwarded; it isn't rejected, as
+  several people can scan at the same moment.
 - Every scan, accepted or not, is logged in `attendance_attempts`; the attendance table shows
   *QR* next to the distance, and exports have an *Office QR* column.
+- **Settings → Office QR** shows when each display was last used, and warns when scans keep
+  being rejected because a display's clock is wrong.
 
 Clearing the display browser's site data (or using a private window) creates a new key, so
 the screen has to be paired again. The QR code makes cheating much harder but not
@@ -336,7 +350,7 @@ Attendance endpoints only ever return the signed-in employee's own records.
 | GET      | `/reports/daily?from=&to=&department=&employee=` | Employee daily rows (first 5,000; the export has all) |
 | GET      | `/reports/export?…&type=`              | Excel workbook (`summary`, `department`, `employee`, `daily`, `late`, `absent`, `not_checked_out`) |
 | GET/PUT  | `/settings`                            | Organisation settings                                   |
-| POST     | `/settings/displays`                   | `{ code, name }`: pair the office display showing `code` |
+| POST     | `/settings/displays`                   | Add an office display: `{ code, name }` for the browser showing `code`, or `{ setup, name }` for an ESP32's setup code |
 | DELETE   | `/settings/displays/:id`               | Remove an office display; its codes stop working        |
 
 ## Security and privacy
