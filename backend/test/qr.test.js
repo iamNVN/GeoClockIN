@@ -152,6 +152,29 @@ describe('verifySetupCode', () => {
   });
 });
 
+describe('codes made by the ESP32 firmware', () => {
+  // Real output of firmware/esp32-display, read off its screen on a simulated ESP32.
+  const setupCode =
+    '{"v":2,"p":"setup","pk":"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIAtrb_69WKYSEgEbKDmIsXzJhTohq7xqzz_6r2BcmuoA-lQbA5GNt8QOpiWVJeWXdk7n-sr_8qbVy0TvAEX9ZQ","sig":"X0RQoBUhF3xYgq73t01HmlrgVrnLEnAsVoyvgMNczvR-xQ2yxtGswXLIOjPuQbY1awbZen6mRSOaGLIkMcYNnw"}';
+  const liveCode =
+    '{"v":2,"d":"NTla3pAo","n":"Pqb8_P7fqbLn","iat":1793618969,"exp":1793618974,"p":"att","sig":"gzyGboK_GZYUznLXQ0PP9JvdCmZEBUin2xSz-eYdB7TfULE-QzQpUpI0p-fPL7Ev7PYONq98bqth16UG8GPBbQ"}';
+  const iat = 1793618969;
+
+  it('accepts its setup code, and derives the id its codes carry', () => {
+    const setup = verifySetupCode(setupCode);
+    assert.equal(setup.ok, true);
+    assert.equal(keyIdFor(setup.publicKey), 'NTla3pAo');
+  });
+
+  it('accepts its live code while it is in date, and not after', () => {
+    const { publicKey } = verifySetupCode(setupCode);
+    const display = { id: keyIdFor(publicKey), name: 'ESP32', publicKey };
+    assert.equal(verifyQrToken(liveCode, [display], iat * 1000 + 1000).ok, true);
+    assert.equal(verifyQrToken(liveCode, [display], (iat + 6) * 1000).code, 'EXPIRED');
+    assert.equal(verifyQrToken(liveCode.replace('Pqb8', 'Pqb9'), [display], iat * 1000).code, 'INVALID');
+  });
+});
+
 describe('publicKeyFrom', () => {
   const reception = makeDisplay();
 
