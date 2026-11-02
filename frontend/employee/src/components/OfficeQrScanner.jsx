@@ -2,7 +2,8 @@ import { Camera, LoaderCircle, RefreshCw } from 'lucide-react';
 import QrScanner from 'qr-scanner';
 import { useEffect, useRef, useState } from 'react';
 
-const OFFICE_CODE_PREFIX = 'GCQ1.';
+// Displays show JSON codes; the first is the earlier format of the /display page.
+const OFFICE_CODE_PREFIXES = ['GCQ1.', '{"v":2,'];
 
 /** A user-facing explanation of why the camera didn't start (`error` from getUserMedia). */
 function cameraProblem(error) {
@@ -69,7 +70,7 @@ export function OfficeQrScanner({ onCode, busy, message }) {
         const state = latest.current;
         if (!active || state.busy || data === state.lastCode) return;
         state.lastCode = data;
-        if (!data.startsWith(OFFICE_CODE_PREFIX)) {
+        if (!OFFICE_CODE_PREFIXES.some((prefix) => data.startsWith(prefix))) {
           setHint('That isn’t the office code. Point at the code on the office display.');
           return;
         }

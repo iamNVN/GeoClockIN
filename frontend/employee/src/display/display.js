@@ -13,6 +13,8 @@ import './display.css';
 const STATUS_PENDING_MS = 3000;
 const STATUS_APPROVED_MS = 60_000;
 const CLOCK_SYNC_MS = 5 * 60_000;
+const CODE_LIFETIME_SECONDS = 5;
+const NONCE_BYTES = 9;
 
 const root = document.querySelector('.display');
 const el = (name) => root.querySelector(`[data-${name}]`);
@@ -89,9 +91,17 @@ let approved = false;
 let codeTimer;
 
 async function showCode() {
-  const message = `GCQ1.${key.keyId}.${Math.floor(now() / 1000)}`;
-  const signature = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key.privateKey, new TextEncoder().encode(message));
-  el('qr').innerHTML = await QRCode.toString(`${message}.${base64url(signature)}`, { type: 'svg', errorCorrectionLevel: 'M', margin: 0 });
+  const iat = Math.floor(now() / 1000);
+  const exp = iat + CODE_LIFETIME_SECONDS;
+  const d = key.keyId;
+  const n = base64url(crypto.getRandomValues(new Uint8Array(NONCE_BYTES)));
+  const signature = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    key.privateKey,
+    new TextEncoder().encode(`GCQ2|${d}|${n}|${iat}|${exp}|att`),
+  );
+  const code = JSON.stringify({ v: 2, d, n, iat, exp, p: 'att', sig: base64url(signature) });
+  el('qr').innerHTML = await QRCode.toString(code, { type: 'svg', errorCorrectionLevel: 'M', margin: 0 });
 }
 
 // A new code on every second boundary, in step with the codes' timestamps.

@@ -4,6 +4,7 @@ import {
   Check,
   Clock,
   Copy,
+  Cpu,
   Globe,
   ImageUp,
   KeyRound,
@@ -13,6 +14,7 @@ import {
   Plus,
   QrCode,
   Save,
+  ScanLine,
   Settings as SettingsIcon,
   ShieldCheck,
   Timer,
@@ -26,6 +28,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { CompanyLogo } from '../components/CompanyLogo.jsx';
 import { MapPicker } from '../components/MapPicker.jsx';
 import { Modal } from '../components/Modal.jsx';
+import { SetupCodeScanner } from '../components/SetupCodeScanner.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { EmptyState, PageHead, Skeleton } from '../components/ui.jsx';
 import { useApi } from '../hooks/useApi.js';
@@ -175,7 +178,7 @@ export default function SettingsPage() {
           {tab === 'office' && <OfficeTab draft={draft} update={update} error={error} />}
           {tab === 'rules' && <RulesTab draft={draft} update={update} error={error} presets={saved?.holidayPresets ?? []} />}
           {tab === 'departments' && <DepartmentsTab draft={draft} update={update} />}
-          {tab === 'qr' && <QrTab draft={draft} update={update} onSaved={applySaved} />}
+          {tab === 'qr' && <QrTab draft={draft} update={update} onSaved={applySaved} activity={saved?.displayActivity ?? {}} />}
           {saved?.updatedAt && (
             <p className="muted settings-meta">
               Last saved {new Date(saved.updatedAt).toLocaleString()} {saved.updatedBy && saved.updatedBy !== 'seed' ? `by ${saved.updatedBy}` : ''}
@@ -655,8 +658,24 @@ const QR_FACTS = [
     title: 'New code every second',
     text: 'The display shows a new code every second, and each code expires 5 seconds later, so a photo or screenshot of it stops working almost at once.',
   },
-  { Icon: ShieldCheck, title: 'Only paired screens', text: 'Each display signs codes with its own key. Opening the link elsewhere only shows a pairing code, and its codes are rejected.' },
+  { Icon: ShieldCheck, title: 'Only screens you add', text: 'Each display signs codes with its own private key. Codes from a screen you haven’t added here are rejected.' },
 ];
+
+const DISPLAY_KINDS = [
+  { id: 'browser', label: 'Computer or tablet', Icon: Monitor },
+  { id: 'device', label: 'ESP32 display', Icon: Cpu },
+];
+
+function displayUse(activity) {
+  return activity?.lastUsedAt ? `Last used ${new Date(activity.lastUsedAt).toLocaleString()}` : 'Not used yet';
+}
+
+/** Positive seconds: the display's clock is behind ours. Scans are failing because of it. */
+function clockWarning(seconds) {
+  const off = Math.abs(seconds);
+  const amount = off < 120 ? `${off} seconds` : off < 7200 ? `${Math.round(off / 60)} minutes` : `${Math.round(off / 3600)} hours`;
+  return `Scans are being rejected: this display’s clock is about ${amount} ${seconds > 0 ? 'behind' : 'ahead'}. Check its Wi-Fi and internet connection.`;
+}
 
 /** "k7qm9xp2" → "K7QM-9XP2" while typing. */
 const formatPairingCode = (value) => {
@@ -664,14 +683,43 @@ const formatPairingCode = (value) => {
   return code.length > 4 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
 };
 
-function QrTab({ draft, update, onSaved }) {
+function QrTab({ draft, update, onSaved, activity }) {
   const { qr } = draft;
   const toast = useToast();
+  const [kind, setKind] = useState('browser');
   const [form, setForm] = useState({ name: '', code: '' });
   const [pairing, setPairing] = useState(false);
   const [pairError, setPairError] = useState(null);
+  const [device, setDevice] = useState({ name: '', setup: '' });
+  const [addingDevice, setAddingDevice] = useState(false);
+  const [deviceError, setDeviceError] = useState(null);
+  const [scanning, setScanning] = useState(false);
   const [removing, setRemoving] = useState(null);
   const codeComplete = form.code.replace('-', '').length === 8;
+
+  async function addDevice(event) {
+    event.preventDefault();
+    if (!device.name.trim() || !device.setup.trim()) return;
+    setAddingDevice(true);
+    setDeviceError(null);
+    try {
+      const { settings, display } = await api('/admin/settings/displays', { method: 'POST', body: { name: device.name, setup: device.setup } });
+      onSaved(settings);
+      setDevice({ name: '', setup: '' });
+      toast.success(`${display.name} is added. Press BOOT on the display to show live codes.`);
+    } catch (e) {
+      setDeviceError(e.message);
+    } finally {
+      setAddingDevice(false);
+    }
+  }
+
+  function scannedSetupCode(setup) {
+    setDevice((d) => ({ ...d, setup }));
+    setDeviceError(null);
+    setScanning(false);
+    toast.success('Setup code read.');
+  }
 
   async function pair(event) {
     event.preventDefault();
@@ -727,7 +775,7 @@ function QrTab({ draft, update, onSaved }) {
             <strong>Require the office QR code to clock in and out</strong>
             <span className="muted">
               {qr.displays.length === 0
-                ? 'Pair an office display below to turn this on.'
+                ? 'Add an office display below to turn this on.'
                 : 'After the location check, employees scan the code on the office display. Clock In stays disabled until the scan succeeds.'}
             </span>
           </span>
@@ -745,61 +793,117 @@ function QrTab({ draft, update, onSaved }) {
         </ul>
       </Section>
 
-      <Section title="Office Displays" subtitle="Computers or tablets at the office that show the code. A screen only works after you pair it here.">
-        <ol className="pair-steps">
-          <li>
-            <span className="pair-steps__label">Open this link on the office computer or tablet, full screen:</span>
-            <span className="display-link">
-              <a href={DISPLAY_LINK} target="_blank" rel="noreferrer">
-                {DISPLAY_LINK}
-              </a>
-              <button type="button" className="btn btn--secondary btn--sm" onClick={copyLink}>
-                <Copy aria-hidden="true" /> Copy
-              </button>
-            </span>
-          </li>
-          <li>
-            <span className="pair-steps__label">Enter the pairing code it shows, and a name for it:</span>
-            <form className="display-form" onSubmit={pair}>
-              <span className="input">
-                <Monitor aria-hidden="true" />
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Name, e.g. Reception"
-                  maxLength={60}
-                  aria-label="Display name"
-                />
+      <Section title="Office Displays" subtitle="Screens at the office that show the code. A screen only works after you add it here.">
+        <div className="segmented" role="group" aria-label="Type of display to add">
+          {DISPLAY_KINDS.map(({ id, label, Icon }) => (
+            <button key={id} type="button" className={kind === id ? 'is-active' : ''} aria-pressed={kind === id} onClick={() => setKind(id)}>
+              <Icon aria-hidden="true" /> {label}
+            </button>
+          ))}
+        </div>
+
+        {kind === 'browser' ? (
+          <ol className="pair-steps">
+            <li>
+              <span className="pair-steps__label">Open this link on the office computer or tablet, full screen:</span>
+              <span className="display-link">
+                <a href={DISPLAY_LINK} target="_blank" rel="noreferrer">
+                  {DISPLAY_LINK}
+                </a>
+                <button type="button" className="btn btn--secondary btn--sm" onClick={copyLink}>
+                  <Copy aria-hidden="true" /> Copy
+                </button>
               </span>
-              <span className={`input input--code${pairError ? ' is-invalid' : ''}`}>
-                <KeyRound aria-hidden="true" />
-                <input
-                  value={form.code}
-                  onChange={(e) => setForm({ ...form, code: formatPairingCode(e.target.value) })}
-                  placeholder="ABCD-1234"
-                  aria-label="Pairing code"
-                  autoComplete="off"
-                  spellCheck="false"
-                />
-              </span>
-              <button type="submit" className="btn btn--primary" disabled={pairing || !form.name.trim() || !codeComplete}>
-                {pairing ? <LoaderCircle className="spin" aria-hidden="true" /> : <Plus aria-hidden="true" />} Pair Display
-              </button>
-            </form>
-            {pairError && <p className="field-error">{pairError}</p>}
-          </li>
-        </ol>
+            </li>
+            <li>
+              <span className="pair-steps__label">Enter the pairing code it shows, and a name for it:</span>
+              <form className="display-form" onSubmit={pair}>
+                <span className="input">
+                  <Monitor aria-hidden="true" />
+                  <input
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Name, e.g. Reception"
+                    maxLength={60}
+                    aria-label="Display name"
+                  />
+                </span>
+                <span className={`input input--code${pairError ? ' is-invalid' : ''}`}>
+                  <KeyRound aria-hidden="true" />
+                  <input
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: formatPairingCode(e.target.value) })}
+                    placeholder="ABCD-1234"
+                    aria-label="Pairing code"
+                    autoComplete="off"
+                    spellCheck="false"
+                  />
+                </span>
+                <button type="submit" className="btn btn--primary" disabled={pairing || !form.name.trim() || !codeComplete}>
+                  {pairing ? <LoaderCircle className="spin" aria-hidden="true" /> : <Plus aria-hidden="true" />} Pair Display
+                </button>
+              </form>
+              {pairError && <p className="field-error">{pairError}</p>}
+            </li>
+          </ol>
+        ) : (
+          <ol className="pair-steps">
+            <li>
+              <span className="pair-steps__label">Power on the ESP32 display and connect it to the office Wi-Fi. Its screen shows how, and then shows a setup code.</span>
+            </li>
+            <li>
+              <span className="pair-steps__label">Scan the setup code, or paste it from the display’s serial log, and name the display:</span>
+              <form className="device-form" onSubmit={addDevice}>
+                <span className="input">
+                  <Cpu aria-hidden="true" />
+                  <input
+                    value={device.name}
+                    onChange={(e) => setDevice({ ...device, name: e.target.value })}
+                    placeholder="Name, e.g. Reception"
+                    maxLength={60}
+                    aria-label="ESP32 display name"
+                  />
+                </span>
+                <div className="device-form__code">
+                  <textarea
+                    className="textarea textarea--code"
+                    rows={3}
+                    value={device.setup}
+                    onChange={(e) => setDevice({ ...device, setup: e.target.value })}
+                    placeholder={'{"v":2,"p":"setup","pk":"…","sig":"…"}'}
+                    aria-label="Setup code"
+                    autoComplete="off"
+                    spellCheck="false"
+                  />
+                  <button type="button" className="btn btn--secondary" onClick={() => setScanning(true)}>
+                    <ScanLine aria-hidden="true" /> Scan
+                  </button>
+                </div>
+                <button type="submit" className="btn btn--primary" disabled={addingDevice || !device.name.trim() || !device.setup.trim()}>
+                  {addingDevice ? <LoaderCircle className="spin" aria-hidden="true" /> : <Plus aria-hidden="true" />} Add Display
+                </button>
+              </form>
+              {deviceError && <p className="field-error">{deviceError}</p>}
+            </li>
+            <li>
+              <span className="pair-steps__label">Press the BOOT button on the display. It switches to live codes.</span>
+            </li>
+          </ol>
+        )}
 
         {qr.displays.length === 0 ? (
-          <p className="muted">No displays paired yet.</p>
+          <p className="muted">No displays added yet.</p>
         ) : (
           <ul className="list-rows">
             {qr.displays.map((d) => (
               <li key={d.id}>
-                <span className="list-rows__main display-row">
-                  <Monitor aria-hidden="true" />
-                  <strong>{d.name}</strong>
-                  <span className="muted">Paired</span>
+                <span className="display-row__body">
+                  <span className="list-rows__main display-row">
+                    <Monitor aria-hidden="true" />
+                    <strong>{d.name}</strong>
+                    <span className="muted">{displayUse(activity[d.id])}</span>
+                  </span>
+                  {activity[d.id]?.clockBehindSeconds != null && <span className="field-error">{clockWarning(activity[d.id].clockBehindSeconds)}</span>}
                 </span>
                 <button type="button" className="icon-btn icon-btn--danger" onClick={() => setRemoving(d)} aria-label={`Remove ${d.name}`}>
                   <Trash2 aria-hidden="true" />
@@ -810,10 +914,14 @@ function QrTab({ draft, update, onSaved }) {
         )}
       </Section>
 
+      <Modal open={scanning} title="Scan the setup code" subtitle="Point the camera at the QR code on the ESP32 display." onClose={() => setScanning(false)} size="sm">
+        <SetupCodeScanner onCode={scannedSetupCode} />
+      </Modal>
+
       <Modal
         open={Boolean(removing)}
         title={`Remove ${removing?.name ?? 'display'}?`}
-        subtitle="Codes on that screen stop working at once. To use it again, open the link there and pair it again."
+        subtitle="Codes on that screen stop working at once. To use it again, add it here again."
         onClose={() => setRemoving(null)}
         size="sm"
         footer={
