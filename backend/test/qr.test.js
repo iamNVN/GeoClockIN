@@ -1,22 +1,30 @@
 import assert from 'node:assert/strict';
-import { generateKeyPairSync, sign } from 'node:crypto';
+import { generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import { describe, it } from 'node:test';
 import seed from '../config/geoclockin.config.js';
-import { keyIdFor, publicKeyFrom, QR_MAX_AGE_SECONDS, verifyQrToken } from '../src/lib/qrToken.js';
+import { keyIdFor, publicKeyFrom, QR_MAX_AGE_SECONDS, qrSignedText, setupSignedText, verifyQrToken, verifySetupCode } from '../src/lib/qrToken.js';
 import { normalizeSettings } from '../src/lib/settingsSchema.js';
 import { normalizePairingCode } from '../src/displays.js';
 import { issuePresence, readPresence } from '../src/presence.js';
 
-/** A display key pair and a code signer, as the /display page makes them (WebCrypto ECDSA P-256). */
+const signWith = (privateKey, text) => sign('sha256', Buffer.from(text), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
+
+/** A display key pair and code signers: `code` as displays make them now, `legacyCode` as /display used to. */
 function makeDisplay(name = 'Reception') {
   const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const raw = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const display = { id: keyIdFor(raw), name, publicKey: raw };
-  const code = (seconds) => {
-    const message = `GCQ1.${display.id}.${seconds}`;
-    return `${message}.${sign('sha256', Buffer.from(message), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url')}`;
+  const fields = (seconds, changes = {}) => ({ v: 2, d: display.id, n: randomBytes(9).toString('base64url'), iat: seconds, exp: seconds + 5, p: 'att', ...changes });
+  const code = (seconds, changes) => {
+    const signed = fields(seconds, changes);
+    return JSON.stringify({ ...signed, sig: signWith(privateKey, qrSignedText(signed)) });
   };
-  return { display, code };
+  const legacyCode = (seconds) => {
+    const message = `GCQ1.${display.id}.${seconds}`;
+    return `${message}.${signWith(privateKey, message)}`;
+  };
+  const setupCode = () => JSON.stringify({ v: 2, p: 'setup', pk: raw, sig: signWith(privateKey, setupSignedText(raw)) });
+  return { display, code, legacyCode, setupCode };
 }
 
 const NOW = Date.UTC(2026, 9, 31, 4, 0, 0);
@@ -25,37 +33,127 @@ const nowSeconds = NOW / 1000;
 describe('verifyQrToken', () => {
   const reception = makeDisplay();
   const other = makeDisplay('Other office');
+  const check = (code) => verifyQrToken(code, [reception.display], NOW);
 
   it('accepts a fresh code from a registered display', () => {
-    const result = verifyQrToken(reception.code(nowSeconds - 2), [reception.display], NOW);
+    const code = reception.code(nowSeconds - 2);
+    const result = check(code);
     assert.equal(result.ok, true);
     assert.equal(result.display.name, 'Reception');
+    assert.equal(result.nonce, JSON.parse(code).n);
+  });
+
+  it('fits a version 9 QR code at medium error correction (180 bytes)', () => {
+    assert.equal(Buffer.byteLength(reception.code(nowSeconds)), 180);
   });
 
   it('rejects codes older than the limit, as a photo would be', () => {
-    assert.equal(verifyQrToken(reception.code(nowSeconds - QR_MAX_AGE_SECONDS - 1), [reception.display], NOW).code, 'EXPIRED');
-    assert.equal(verifyQrToken(reception.code(nowSeconds - 3600), [reception.display], NOW).code, 'EXPIRED');
+    const old = check(reception.code(nowSeconds - QR_MAX_AGE_SECONDS - 1));
+    assert.equal(old.code, 'EXPIRED');
+    assert.equal(old.display.id, reception.display.id);
+    assert.equal(old.ageSeconds, QR_MAX_AGE_SECONDS + 1);
+    assert.equal(check(reception.code(nowSeconds - 3600)).code, 'EXPIRED');
   });
 
   it('rejects codes from a display clock running ahead', () => {
-    assert.equal(verifyQrToken(reception.code(nowSeconds + 60), [reception.display], NOW).code, 'AHEAD');
+    assert.equal(check(reception.code(nowSeconds + 60)).code, 'AHEAD');
+    assert.equal(check(reception.code(nowSeconds + 2)).ok, true);
   });
 
   it('rejects unregistered displays and forged or altered codes', () => {
-    assert.equal(verifyQrToken(other.code(nowSeconds), [reception.display], NOW).code, 'UNKNOWN_DISPLAY');
+    assert.equal(check(other.code(nowSeconds)).code, 'UNKNOWN_DISPLAY');
     // Signed by another key but claiming the registered display's id.
-    const forged = other.code(nowSeconds).replace(other.display.id, reception.display.id);
-    assert.equal(verifyQrToken(forged, [reception.display], NOW).code, 'INVALID');
-    // A valid code with its time changed to look fresh.
-    const old = reception.code(nowSeconds - 600).split('.');
-    old[2] = String(nowSeconds);
-    assert.equal(verifyQrToken(old.join('.'), [reception.display], NOW).code, 'INVALID');
+    assert.equal(check(other.code(nowSeconds, { d: reception.display.id })).code, 'INVALID');
+    // A valid code with one field changed afterwards.
+    for (const change of [{ iat: nowSeconds }, { exp: nowSeconds + 3 }, { n: 'AAAAAAAAAAAA' }]) {
+      const altered = { ...JSON.parse(reception.code(nowSeconds - 600)), ...change };
+      assert.equal(check(JSON.stringify(altered)).code, 'INVALID', Object.keys(change)[0]);
+    }
+  });
+
+  it('does not care about JSON spacing or key order', () => {
+    const { sig, ...rest } = JSON.parse(reception.code(nowSeconds));
+    const reordered = JSON.stringify({ sig, ...rest }, null, 1);
+    assert.equal(check(reordered).ok, true);
+  });
+
+  it('rejects signed codes that claim a longer life than the limit', () => {
+    assert.equal(check(reception.code(nowSeconds, { exp: nowSeconds + QR_MAX_AGE_SECONDS + 1 })).code, 'INVALID');
+    assert.equal(check(reception.code(nowSeconds, { exp: nowSeconds })).code, 'INVALID');
+  });
+
+  it('rejects malformed codes without trusting any field', () => {
+    const good = JSON.parse(reception.code(nowSeconds));
+    const cases = [
+      { ...good, extra: 1 },
+      { ...good, p: 'other' },
+      { ...good, d: 123 },
+      { ...good, n: 'short' },
+      { ...good, iat: String(good.iat) },
+      { ...good, exp: 1.5 },
+      { ...good, sig: 'AAAA' },
+      { ...good, sig: null },
+    ];
+    for (const code of cases) assert.equal(check(JSON.stringify(code)).code, 'INVALID', JSON.stringify(code).slice(0, 80));
+    const { sig, ...unsigned } = good;
+    assert.equal(check(JSON.stringify(unsigned)).code, 'INVALID');
+  });
+
+  it('tells a display still in setup apart from other codes', () => {
+    assert.equal(check(reception.setupCode()).code, 'SETUP_CODE');
   });
 
   it('ignores codes that are not office codes', () => {
-    assert.equal(verifyQrToken('https://example.com', [reception.display], NOW).code, 'NOT_OFFICE_QR');
-    assert.equal(verifyQrToken(null, [reception.display], NOW).code, 'NOT_OFFICE_QR');
+    for (const code of ['https://example.com', null, 42, '{"a":1}', '[]', '{"v":1}', '{broken', `{"v":2,"x":"${'y'.repeat(500)}"}`]) {
+      assert.equal(check(code).code, 'NOT_OFFICE_QR', String(code).slice(0, 30));
+    }
   });
+
+  it('still accepts the earlier format from display pages opened before the change', () => {
+    const fresh = check(reception.legacyCode(nowSeconds - 2));
+    assert.equal(fresh.ok, true);
+    assert.equal(fresh.nonce, null);
+    assert.equal(check(reception.legacyCode(nowSeconds - QR_MAX_AGE_SECONDS - 1)).code, 'EXPIRED');
+    assert.equal(check(reception.legacyCode(nowSeconds + 60)).code, 'AHEAD');
+    assert.equal(check(other.legacyCode(nowSeconds)).code, 'UNKNOWN_DISPLAY');
+    const moved = reception.legacyCode(nowSeconds - 600).split('.');
+    moved[2] = String(nowSeconds);
+    assert.equal(check(moved.join('.')).code, 'INVALID');
+    assert.equal(check('GCQ1.only-two').code, 'NOT_OFFICE_QR');
+  });
+});
+
+describe('verifySetupCode', () => {
+  const device = makeDisplay('ESP32');
+  const other = makeDisplay('Other');
+
+  it('accepts a setup code signed by the key it carries', () => {
+    const result = verifySetupCode(device.setupCode());
+    assert.deepEqual(result, { ok: true, publicKey: device.display.publicKey });
+  });
+
+  it('rejects a setup code signed by another key', () => {
+    const forged = { ...JSON.parse(other.setupCode()), pk: device.display.publicKey };
+    assert.equal(verifySetupCode(JSON.stringify(forged)).code, 'INVALID');
+  });
+
+  it('rejects keys that are not P-256 and altered codes', () => {
+    const good = JSON.parse(device.setupCode());
+    assert.equal(verifySetupCode(JSON.stringify({ ...good, pk: 'not-a-key' })).code, 'INVALID');
+    assert.equal(verifySetupCode(JSON.stringify({ ...good, sig: 'A'.repeat(86) })).code, 'INVALID');
+    assert.equal(verifySetupCode(JSON.stringify({ ...good, sig: 7 })).code, 'INVALID');
+  });
+
+  it('explains a live code, and refuses anything else', () => {
+    assert.equal(verifySetupCode(device.code(nowSeconds)).code, 'LIVE_CODE');
+    for (const code of ['hello', null, '{"v":2,"p":"setup"}', '{"v":2,"p":"other"}', device.legacyCode(nowSeconds)]) {
+      assert.equal(verifySetupCode(code).code, 'NOT_SETUP_CODE', String(code).slice(0, 30));
+    }
+  });
+});
+
+describe('publicKeyFrom', () => {
+  const reception = makeDisplay();
 
   it('only takes P-256 public keys', () => {
     assert.ok(publicKeyFrom(reception.display.publicKey));

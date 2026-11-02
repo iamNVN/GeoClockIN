@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../auth.js';
 import { query } from '../db.js';
+import { claimCode, noteClockReject, noteCodeAccepted } from '../displays.js';
 import { HttpError } from '../errors.js';
 import {
   buildMonth,
@@ -25,6 +26,8 @@ const QR_MESSAGES = {
   INVALID: 'This QR code isn’t valid. Scan the live code on the office display.',
   EXPIRED: 'This QR code has expired. Scan the live code on the office display.',
   AHEAD: 'The office display’s clock is ahead. Ask your admin to check the display’s time.',
+  SETUP_CODE: 'This display is still in setup. Ask your admin to finish setting it up.',
+  ALREADY_USED: 'You already used this code. Keep the camera on the display for the next one.',
 };
 
 const router = Router();
@@ -152,10 +155,20 @@ router.post('/verify-qr', async (req, res) => {
   const action = actionParam(req.body);
   const presence = readPresence(req.body.presence, req.employee.id, action);
   const result = verifyQrToken(req.body.code, req.settings.qr.displays);
+  const reject = async (code) => {
+    await logAttempt(req.employee.id, action, `qr_${code.toLowerCase()}`, presence);
+    throw new HttpError(422, `QR_${code}`, QR_MESSAGES[code]);
+  };
   if (!result.ok) {
-    await logAttempt(req.employee.id, action, `qr_${result.code.toLowerCase()}`, presence);
-    throw new HttpError(422, `QR_${result.code}`, QR_MESSAGES[result.code]);
+    if (result.display) await noteClockReject(result.display.id, result.ageSeconds);
+    await reject(result.code);
   }
+  if (result.nonce) {
+    const use = await claimCode(result.nonce, req.employee.id, result.display.id);
+    if (use.reused) await reject('ALREADY_USED');
+    if (use.shared) await logAttempt(req.employee.id, action, 'qr_shared', presence);
+  }
+  await noteCodeAccepted(result.display.id, result.ageSeconds);
   await logAttempt(req.employee.id, action, 'qr_verified', presence);
   const token = issuePresence({
     employeeId: req.employee.id,

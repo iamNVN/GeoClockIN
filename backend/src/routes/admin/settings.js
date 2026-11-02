@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 import { audit } from '../../audit.js';
 import { deleteLogo, logoVersion, MAX_LOGO_BYTES, saveLogo } from '../../branding.js';
 import { query } from '../../db.js';
-import { approveDisplay, removeDisplay } from '../../displays.js';
+import { approveDisplay, displayActivity, registerDevice, removeDisplay } from '../../displays.js';
 import { HOLIDAY_PRESETS } from '../../lib/holidayPresets.js';
 import { saveSettings, storableSettings } from '../../settings.js';
 
@@ -16,6 +16,7 @@ router.get('/', async (req, res) => {
     updatedBy: rows[0]?.updated_by ?? null,
     logoVersion: await logoVersion(),
     holidayPresets: HOLIDAY_PRESETS,
+    displayActivity: await displayActivity(),
   });
 });
 
@@ -35,11 +36,13 @@ router.put('/', async (req, res) => {
   res.json({ settings: saved, updatedAt: new Date().toISOString(), updatedBy: req.admin.email });
 });
 
-// Office QR displays: pair the display showing `code`, or remove one. Both
-// take effect at once (not with Save Changes).
+// Office QR displays: add one (a browser by the pairing `code` it shows, an ESP32
+// display by its `setup` code), or remove one. Both take effect at once (not with
+// Save Changes).
 router.post('/displays', async (req, res) => {
-  const { settings, display } = await approveDisplay(req.body?.code, req.body?.name, req.admin.email);
-  await audit(null, req.admin, 'display.add', 'settings', display.id, { name: display.name });
+  const { code, setup, name } = req.body ?? {};
+  const { settings, display } = setup ? await registerDevice(setup, name, req.admin.email) : await approveDisplay(code, name, req.admin.email);
+  await audit(null, req.admin, 'display.add', 'settings', display.id, { name: display.name, via: setup ? 'setup_code' : 'pairing_code' });
   res.status(201).json({ settings: storableSettings(settings), display });
 });
 

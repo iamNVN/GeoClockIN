@@ -128,6 +128,27 @@ CREATE TABLE IF NOT EXISTS display_pairings (
   expires_at  TIMESTAMPTZ NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Who used which office QR code (by its nonce), kept only for about a minute:
+-- a code lives for seconds. One person can't use a code twice, and one code used
+-- by many people is logged as probably forwarded.
+CREATE TABLE IF NOT EXISTS qr_code_uses (
+  nonce        TEXT        NOT NULL,
+  employee_id  TEXT        NOT NULL,
+  display_id   TEXT        NOT NULL,
+  used_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (nonce, employee_id)
+);
+CREATE INDEX IF NOT EXISTS qr_code_uses_used_at_idx ON qr_code_uses (used_at);
+
+-- What scans tell us about each office display; it never contacts the server.
+-- clock_rejects counts signed codes rejected in a row because of their time.
+CREATE TABLE IF NOT EXISTS qr_display_activity (
+  display_id            TEXT PRIMARY KEY,
+  last_used_at          TIMESTAMPTZ,
+  clock_rejects         INTEGER NOT NULL DEFAULT 0,
+  clock_offset_seconds  INTEGER
+);
 `;
 
 // Arbitrary constant identifying the schema-migration advisory lock.
