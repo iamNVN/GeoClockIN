@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "author": "GeoClockIN",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 40, "left": -130, "attrs": {} },
+    { "type": "wokwi-ili9341", "id": "lcd", "top": -60, "left": 60, "attrs": {} },
+    { "type": "wokwi-ds1307", "id": "rtc", "top": 290, "left": 60, "attrs": {} },
+    { "type": "wokwi-pushbutton", "id": "boot", "top": 300, "left": -130, "attrs": { "color": "green", "label": "BOOT", "bounce": "0" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "lcd:VCC", "esp:3V3", "red", [] ],
+    [ "lcd:GND", "esp:GND.2", "black", [] ],
+    [ "lcd:CS", "esp:15", "orange", [] ],
+    [ "lcd:RST", "esp:4", "gray", [] ],
+    [ "lcd:D/C", "esp:2", "purple", [] ],
+    [ "lcd:MOSI", "esp:23", "blue", [] ],
+    [ "lcd:SCK", "esp:18", "green", [] ],
+    [ "lcd:LED", "esp:32", "yellow", [] ],
+    [ "rtc:5V", "esp:3V3", "red", [] ],
+    [ "rtc:GND", "esp:GND.2", "black", [] ],
+    [ "rtc:SDA", "esp:21", "cyan", [] ],
+    [ "rtc:SCL", "esp:22", "magenta", [] ],
+    [ "boot:1.l", "esp:0", "green", [] ],
+    [ "boot:2.l", "esp:GND.1", "black", [] ]
+  ],
+  "dependencies": {}
+}

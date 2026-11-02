@@ -8,6 +8,9 @@ dist/
 # Local development database (npm run dev)
 .local-db/
 
+# Firmware build output
+.pio/
+
 # Environment
 .env
 .env.*
